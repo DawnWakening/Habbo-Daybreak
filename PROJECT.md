@@ -554,14 +554,20 @@ Representative runnable families:
 - Moderation issue persistence.
 - Wired timers and repeats.
 
-Important files:
-- `runnables/ChannelReadHandler.java` - Runnable wrapper for packet handling on worker threads.
-- `runnables/ShutdownEmulator.java` - Runnable that exits the emulator process.
-- `runnables/WiredRepeatEffectTask.java` - Scheduled repeated wired effect task.
-- `runnables/WiredResetTimers.java` - Task to reset wired timers.
-- `runnables/GuideFindNewHelper.java` - Guide-system helper matching task.
-- `runnables/GuardianVotingFinish.java` - Guardian-vote completion task.
-- `runnables/RemoveFloorItemTask.java` - Delayed floor-item removal task.
+Runnable scope note:
+- The `runnables/` subdirectory contains 50+ classes. Only a representative subset is listed here.
+- Full enumeration is omitted because the set is large, the pattern is repetitive (construct, acquire state, act, release), and the individual classes are narrow enough to be self-describing by name.
+- Key categories, with examples:
+
+Animation and movement: `RoomUnitWalkToLocation`, `RoomUnitWalkToRoomUnit`, `RoomUnitTeleport`, `BotFollowHabbo`, `PetFollowHabbo`, `BackgroundAnimation`
+Game mechanics: `BanzaiRandomTeleport`, `CannonKickAction`, `CannonResetCooldownAction`, `KickBallAction`
+Room and item management: `RemoveFloorItemTask`, `RoomTrashing`, `ClearRentedSpace`
+Pets: `PetClearPosture`, `PetEatAction`, `RoomUnitRidePet`
+Gifts and inventory: `OpenGift`, `HabboGiveHandItemToHabbo`
+Moderation and guides: `GuardianVotingFinish`, `GuardianTicketFindMoreSlaves`, `GuardianNotAccepted`, `GuideFindNewHelper`
+Database: `QueryDeleteHabboItem`, `QueryDeleteHabboItems`, `InsertModToolIssue`, `UpdateModToolIssue`
+Infrastructure: `ChannelReadHandler`, `ShutdownEmulator`
+WIRED: `WiredRepeatEffectTask`, `WiredResetTimers`
 
 Observation:
 - The executor layer itself is small.
