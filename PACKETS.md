@@ -456,11 +456,14 @@ Behavior:
 - There is no framing protocol beyond assuming one request body per read.
 - It depends on IP allowlisting rather than explicit auth tokens or TLS inside the shown code.
 
+Note: Domain-layer defects (guilds, guides, moderation, navigation, games, tiles) are documented in `PROJECT.md` → `Confirmed Defects`. This section covers only defects whose root cause is in the packet or transport layer.
+
 ## Confirmed Packet-Layer Defects
 
 1. `PacketManager.unregisterCallables(Integer header)` clears the full callable map.
 File: `src/main/java/com/eu/habbo/messages/PacketManager.java:161-164`
 Impact: Removing callbacks for one packet unregisters callbacks for all packets.
+Note: The two-argument overload `unregisterCallables(Integer header, ICallable callable)` at lines 155-159 is correct — it removes only the named callable for the given header. Only the single-argument form is broken.
 
 2. `ClientMessage` silently returns default values on read failures.
 File: `src/main/java/com/eu/habbo/messages/ClientMessage.java:35-70`
@@ -468,11 +471,11 @@ Impact: Malformed packet bodies can be treated as valid `0`, `false`, or empty-s
 
 3. `ClientMessage.readString()` uses platform-default charset.
 File: `src/main/java/com/eu/habbo/messages/ClientMessage.java:62-68`
-Impact: Packet string decoding is implicitly environment-dependent.
+Impact: Packet string decoding behavior changes based on the JVM's default locale/encoding. On systems where the default charset is not UTF-8 (e.g., some Windows environments or non-UTF-8 Linux locales), non-ASCII characters in incoming strings (usernames, chat messages, room names) will be decoded incorrectly and silently. The correct fix is to use `StandardCharsets.UTF_8` explicitly.
 
 4. `ServerMessage.appendString()` uses platform-default charset.
 File: `src/main/java/com/eu/habbo/messages/ServerMessage.java:56-66`
-Impact: Outgoing string encoding is also environment-dependent.
+Impact: Outgoing string encoding has the same implicit environment dependency. If the server's default charset differs from what the client expects (UTF-8), strings in outgoing packets — including usernames, room descriptions, and catalog text — will be garbled for non-ASCII content on affected environments.
 
 5. `GameMessageRateLimit` effectively allows one more packet than `MAX_COUNTER` suggests.
 File: `src/main/java/com/eu/habbo/networking/gameserver/decoders/GameMessageRateLimit.java:38-43`
@@ -492,18 +495,18 @@ Impact: Partial reads or coalesced messages are not explicitly framed or handled
 
 9. `RCONServerHandler` also uses default charset when reading and writing request/response text.
 File: `src/main/java/com/eu/habbo/networking/rconserver/RCONServerHandler.java:38-55`
-Impact: RCON text encoding is implicitly environment-dependent.
+Impact: RCON text encoding is implicitly environment-dependent. RCON commands or responses containing non-ASCII content (e.g., hotel names, alert text) will be mangled on non-UTF-8 systems. Since RCON is typically used by admin tools, this is a silent correctness risk in hotel administration workflows.
 
 10. `IsFirstLoginOfDayComposer.java` is misplaced under `incoming/handshake`.
 Path: `src/main/java/com/eu/habbo/messages/incoming/handshake/IsFirstLoginOfDayComposer.java`
-Impact: Package hygiene is wrong and increases confusion during packet auditing.
+Impact: The class extends `MessageComposer` and sends an outgoing packet via `Outgoing.IsFirstLoginOfDayComposer` — it is an outgoing composer by type and behavior, not an incoming handler. Placing it under `incoming/handshake` is a mislabeling that breaks the structural contract of the package layout and makes it invisible to any tool or audit that searches the `outgoing/` tree for composer coverage.
 
 ## Probable Packet-Layer Risks
 
 1. Manual packet registration in `PacketManager` is brittle and hard to audit as the codebase evolves.
 2. Reflection-based handler construction makes dependency injection and testing harder.
 3. Unknown and placeholder packets are mixed into production-facing ID catalogs.
-4. Some packet names and class names contain typos, which makes cross-project alignment harder.
+4. Some packet names and class names contain typos, which makes cross-project alignment harder. Known examples: `UnkownPetPackageComposer.java` (missing 'n' in Unknown), `RequestUserCitizinShipEvent.java` (misspelled "Citizenship").
 5. RCON security posture appears weak if network boundaries are not tightly controlled.
 
 ## Incoming Packet Domains

@@ -61,7 +61,7 @@
 
 1. `GuildMember.compareTo` always returns `0`.
 File: `src/main/java/com/eu/habbo/habbohotel/guilds/GuildMember.java:61-63`
-Impact: Any sorting that depends on `Comparable<GuildMember>` is effectively broken or nondeterministic.
+Impact: All guild members compare as equal, so any sort depending on `Comparable<GuildMember>` is a no-op — the collection order is determined entirely by insertion order rather than any meaningful ranking.
 
 2. `GuardianTicket.calculateVerdict` is a hardcoded placeholder.
 File: `src/main/java/com/eu/habbo/habbohotel/guides/GuardianTicket.java:158-160`
@@ -87,36 +87,37 @@ Impact: Serialization has side effects, which can permanently shrink result list
 File: `src/main/java/com/eu/habbo/habbohotel/modtool/ModToolManager.java:359-381`
 Impact: Generated-key retrieval is implemented through the wrong JDBC execution path and is fragile or outright incorrect depending on driver behavior.
 
-8. `WordFilter.filter(String, Habbo)` tries to use case-insensitive replacement through `String.replace`.
+8. `WordFilter.filter(String, Habbo)` detects words case-insensitively via `StringUtils.containsIgnoreCase`, then calls `String.replace("(?i)" + word.key, word.replacement)`.
 File: `src/main/java/com/eu/habbo/habbohotel/modtool/WordFilter.java:149-155`
-Impact: `"(?i)" + word.key` is treated as a literal string, not a regex, so the intended case-insensitive replacement behavior does not occur.
+Impact: `String.replace()` treats its first argument as a literal string, not a regex. The literal string `"(?i)word"` never appears in any real message, so the replacement silently does nothing. Detection fires correctly (the word is found and mute logic runs), but the actual text censoring is entirely skipped — banned words pass through the filter unchanged.
 
 9. `PacketManager.unregisterCallables(Integer header)` clears the entire callable registry.
 File: `src/main/java/com/eu/habbo/messages/PacketManager.java:161-164`
 Impact: Unregistering callables for one header removes callables for all headers.
+Note: The two-argument variant `unregisterCallables(Integer header, ICallable callable)` is correct — it removes only the specified callable for the given header. Only the single-argument overload is broken.
 Note: This is covered in detail again in `PACKETS.md`.
 
 10. `RoomTile` copy construction shares the original `units` set.
 File: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomTile.java:33-48`
-Impact: Copied tiles are not isolated from the original occupancy set, which is risky for pathfinding and state inspection.
+Impact: `tile.copy()` is called by `RoomLayout.getRoute()` during A* pathfinding specifically to avoid mutating the live room grid. However, the copy constructor assigns `this.units = tile.units` — a reference copy, not a deep copy. All other fields (x, y, z, stackHeight, state, gCosts, hCosts) are correctly copied. The shared `units` reference means any modification to the copied tile's occupancy during pathfinding also mutates the original room tile's occupancy set.
 
 11. `RoomTile.hasUnits()` mutates the unit collection during what reads like a pure query.
 File: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomTile.java:183-188`
-Impact: Occupancy checks have hidden side effects and can change runtime state during reads.
+Impact: `hasUnits()` is a lazy-cleanup method: it calls `units.removeIf(unit -> !unit.getCurrentLocation().equals(this))` to evict stale references before returning. This is a cleanup operation disguised as a predicate. Combined with defect #10, calling `hasUnits()` on a pathfinding copy tile will permanently remove units from the original room's tile occupancy set — the stale-reference cleanup runs on the shared set. This also suggests the room engine has incomplete movement-notification paths that leave stale entries in the units collection.
 
 12. `Game.onEnd()` awards `GamePlayerExperience` to `roomOwner` inside the winner loop, not the winner.
 File: `src/main/java/com/eu/habbo/habbohotel/games/Game.java:152-159`
-Impact: Winners may not receive the intended player achievement progression.
+Impact: For every winner on the winning team, the room owner receives one `GamePlayerExperience` achievement progress tick. The actual winner receives nothing. If the room owner is also a winner, they receive multiple ticks (one per winner). Winners who are not the room owner receive no achievement progress at all.
 
 ## Probable Behavior Risks
 
-1. `AchievementManager.createUserEntry()` inserts initial progress `1` into `users_achievements`.
-File: `src/main/java/com/eu/habbo/habbohotel/achievements/AchievementManager.java:205-210`
-Risk: This may be inconsistent with in-memory achievement initialization and could create an off-by-one first-progress behavior.
+1. `AchievementManager.createUserEntry()` inserts initial progress `1` into `users_achievements`, but the caller immediately sets the in-memory state to `0`.
+File: `src/main/java/com/eu/habbo/habbohotel/achievements/AchievementManager.java:86-87, 205-210`
+Risk: At the moment of first achievement creation, the DB row holds `progress = 1` while the live object holds `progress = 0`. In the happy path this resolves itself on the next save, but if the session ends between the insert and the save the DB will permanently show `1` while the correct initial value is `0`. Any future load from DB will appear as if the first step was already taken.
 
-2. `CatalogLimitedConfiguration.generateNumbers(int starting, int amount)` loops with `for (int i = starting; i <= amount; i++)` and then increments `totalSet` by `amount`.
+2. `CatalogLimitedConfiguration.generateNumbers(int starting, int amount)` loops with `for (int i = starting; i <= amount; i++)` and then does `this.totalSet += amount`.
 File: `src/main/java/com/eu/habbo/habbohotel/catalog/CatalogLimitedConfiguration.java:59-79`
-Risk: The method signature reads like `amount` is a count, but the loop treats it like an end value.
+Risk: The parameter name `amount` implies a count, but the loop uses it as an end index. The count actually generated is `(amount - starting + 1)`, not `amount`. `totalSet` therefore overcounts when `starting > 1` — e.g., generating the second batch from `starting=11` to `amount=20` produces 10 numbers but adds `20` to `totalSet`. This causes the limited item's available-count bookkeeping to diverge from reality across multiple `generateNumbers` calls.
 
 3. `CalendarManager.claimCalendarReward(...)` selects a random reward entry from the campaign reward map instead of directly indexing by day.
 File: `src/main/java/com/eu/habbo/habbohotel/campaign/calendar/CalendarManager.java:114-136`
@@ -131,6 +132,12 @@ Note: Detailed packet implications are documented in `PACKETS.md`.
 File: `src/main/java/com/eu/habbo/networking/gameserver/decoders/GameMessageRateLimit.java:38-43`
 Risk: The practical limit is slightly different from what the code communicates.
 Note: Detailed packet implications are documented in `PACKETS.md`.
+
+Note: Additional packet-layer defects exist that are not listed here because they belong squarely in the protocol layer. See `PACKETS.md` → `Confirmed Packet-Layer Defects` for:
+- Charset-dependent string encoding in `ClientMessage` and `ServerMessage` (defects 3–4)
+- `ByteBuf` heap-backing assumptions in `GameByteDecryption` and `GameByteEncryption` (defects 6–7)
+- RCON framing and charset defects (defects 8–9)
+- `IsFirstLoginOfDayComposer` package mislabeling (defect 10)
 
 ## Architectural Backbone
 
@@ -169,6 +176,7 @@ Note: Detailed packet implications are documented in `PACKETS.md`.
 ### Automation and Games
 
 - Room games are handled through `Game` and game-specific subclasses.
+- Seven concrete game types exist: Battle Banzai (tile-control flood-fill), Freeze (snowball/explosion), Football (goal scoring), Tag (tagger-chase movement base), IceTag (skate-effect variant), BunnyrunGame (bunny-pole variant), RollerskateGame (roller-effect variant), and WiredGame (always-running pseudo-game for wired team-effect scenarios).
 - Furniture interactions drive much of gameplay behavior.
 - WIRED adds a more explicit automation engine on top of furniture, room events, and user/item state.
 
@@ -280,10 +288,17 @@ File inventory:
 - `ErrorLog.java` - Deferred DB log entry for emulator errors and stack traces.
 - `GotwPointsScheduler.java` - Recurring scheduler for seasonal/GOTW point rewards.
 - `Logging.java` - Deprecated legacy logging facade.
-- `PixelScheduler.java` - Recurring auto-pixel reward scheduler.
+- `PixelScheduler.java` - Recurring auto-pixel reward scheduler. Grants currency type 0 (pixels, also called duckets in classic Habbo) to online users based on rank and club status.
 - `PointsScheduler.java` - Recurring auto-points reward scheduler.
 - `RoomUserPetComposer.java` - Helper/composer related to room pet user state output.
 - `Scheduler.java` - Self-rescheduling base runnable for recurring jobs.
+
+Scheduler infrastructure pattern:
+- All four currency schedulers (`CreditsScheduler`, `PixelScheduler`, `PointsScheduler`, `GotwPointsScheduler`) share the same common pattern.
+- Each holds static `HC_MODIFIER`, `IGNORE_HOTEL_VIEW`, and `IGNORE_IDLED` fields loaded from config.
+- Each exposes a `reloadConfig()` method allowing live enable/disable without restarting.
+- The base `Scheduler` self-reschedules by calling `Emulator.getThreading().run(this, interval * 1000L)` at the end of each run, using a config-driven interval.
+- `GotwPointsScheduler` contains a TODO comment flagging it as a candidate for plugin-scope logic rather than core emulator scope.
 - `TextsManager.java` - DB-backed text/message lookup manager.
 
 Console command inventory:
@@ -713,10 +728,16 @@ Important interactions:
 - Grants items, badges, currencies, and subscriptions.
 - Fires plugin reward-claim events.
 
+Reward distribution:
+- `CalendarRewardObject.give()` supports multiple reward types per reward row: credits, pixels, points, badge codes, subscription grants (including `HABBO_CLUB`), and item delivery to inventory.
+- The `HC_MODIFIER` multiplier applies to pixel rewards only, scaling the amount for active club members.
+- Each delivered item fires a plugin reward-claim event and sends an inventory notification to the recipient.
+
 Design observations:
 - Small package with straightforward purpose.
 - Most complexity is in claim validation and reward application.
 - The reward-selection logic is a likely place for alignment checks versus the client project.
+- The random reward selection in `CalendarManager.claimCalendarReward()` (see `Probable Behavior Risks` #3) means day-specific reward mapping is not enforced at the emulator level — whether this matches the client's expectation is a key comparison point.
 
 Refactor pressure:
 - Moderate.
@@ -787,7 +808,7 @@ Catalog layout inventory:
 - `GuildForumLayout.java` - Catalog page serializer for guild-forum purchases/content.
 - `GuildFrontpageLayout.java` - Catalog page serializer for guild front page.
 - `GuildFurnitureLayout.java` - Catalog page serializer for guild furniture pages.
-- `InfoDucketsLayout.java` - Informational catalog page serializer for duckets/currency.
+- `InfoDucketsLayout.java` - Informational catalog page serializer for duckets (pixels, currency type 0).
 - `InfoLoyaltyLayout.java` - Informational catalog page serializer for loyalty info.
 - `InfoMonkeyLayout.java` - Informational catalog page serializer for monkey content.
 - `InfoNikoLayout.java` - Informational catalog page serializer for Niko content.
@@ -915,10 +936,10 @@ Room moderation and room control:
 
 Economy, inventory, rewards, and rank:
 - `CreditsCommand.java` - Gives or adjusts credits.
-- `PixelCommand.java` - Gives or adjusts pixels/duckets-style currency.
+- `PixelCommand.java` - Gives or adjusts pixels (currency type 0, also called duckets in classic Habbo).
 - `PointsCommand.java` - Gives or adjusts activity points.
 - `MassCreditsCommand.java` - Gives credits to many users.
-- `MassPixelsCommand.java` - Gives pixels to many users.
+- `MassPixelsCommand.java` - Gives pixels (currency type 0) to all online users.
 - `MassPointsCommand.java` - Gives points to many users.
 - `GiftCommand.java` - Gives a gift/item reward.
 - `RoomGiftCommand.java` - Applies gift-giving behavior room-wide.
@@ -930,7 +951,7 @@ Economy, inventory, rewards, and rank:
 - `MassBadgeCommand.java` - Gives a badge to many users.
 - `RoomBadgeCommand.java` - Gives a badge to room occupants.
 - `RoomCreditsCommand.java` - Gives credits to room occupants.
-- `RoomPixelsCommand.java` - Gives pixels to room occupants.
+- `RoomPixelsCommand.java` - Gives pixels (currency type 0) to room occupants.
 - `RoomPointsCommand.java` - Gives points to room occupants.
 - `RoomBundleCommand.java` - Gives a bundle to room occupants.
 - `PromoteTargetOfferCommand.java` - Promotes or activates a target offer.
@@ -1051,7 +1072,7 @@ File inventory:
 - `tag/RollerskateGame.java` - Rollerskate tag-game variant without poles and with roller effects.
 - `tag/TagGame.java` - Shared tag-game base driven by room movement/look events and tagger assignment.
 - `tag/TagGamePlayer.java` - Tag-game-specific player type.
-- `wired/WiredGame.java` - Always-running pseudo-game used for wired/team-effect scenarios rather than a normal timer-based game.
+- `wired/WiredGame.java` - Always-running pseudo-game used for wired/team-effect scenarios rather than a normal timer-based game. Unlike real games it has no timer expiry; it exists solely so WIRED triggers (`triggerTeamWins`) can reference a game context when applying team-color effects in automation flows.
 
 ### `com.eu.habbo.habbohotel.guides`
 
