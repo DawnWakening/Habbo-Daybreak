@@ -1900,9 +1900,9 @@ A systematic audit of all outgoing composers and their call sites, checking for 
    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemStateComposer.java`
    The composer catches `NumberFormatException` and sends `0` whenever `extradata` is not a valid integer. Items with complex extradata (maps, strings, multi-part) silently lose their state on any toggle or interaction that routes through this composer.
 
-2. **`ItemIntStateComposer` / `ItemStateComposer2` (3431) — Correct usage.**
+2. **`ItemIntStateComposer` / `ItemStateComposer2` (3431) — WRONG HANDLER. Semantic mismatch.**
    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemIntStateComposer.java`
-   Used exclusively by `InteractionOneWayGate`. This is the client's `OneWayDoorStatusMessageComposer`. Usage is correct and appropriately scoped.
+   Used exclusively by `InteractionOneWayGate` (lines 100, 109, 130). Header 3431 maps to `DiceValueMessageEvent` in the client (`_Str_8183`), NOT `OneWayDoorStatusMessageEvent`. The correct header for one-way gates is 2376 (`ItemStateComposer`), which maps to `OneWayDoorStatusMessageEvent` (`_Str_7657`). This works only because both client handlers (`onDiceValue` and `onOneWayDoorStatus` in `RoomMessageHandler.as`) are functionally identical — both read `{int id, int value}` and call `updateObjectFurniture(roomId, id, null, null, value, new LegacyStuffData())`. The gate is also internally inconsistent: `InteractionOneWayGate.java` sends header 3431 directly, but `OneWayGateActionOne.java` uses `room.updateItemState()` which sends header 2376 — the same gate uses two different client handlers depending on code path. See `PACKET-MISALIGNMENT.md` §1 for full analysis.
 
 3. **`ItemExtraDataComposer` (2547) — Underutilized.**
    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemExtraDataComposer.java`
