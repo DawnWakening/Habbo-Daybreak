@@ -1890,6 +1890,182 @@ When cross-referencing packets between client and server, be aware that:
 - Server class names (e.g., `SecureLoginEvent`, `RoomUsersComposer`) are human-readable and descriptive
 - Do not attempt to match client `_Str_XXXX` names to server class names; use `HabboMessages.as` header ID registrations instead
 
+## Packet Misuse Audit
+
+A systematic audit of all outgoing composers and their call sites, checking for wrong header usage, incorrect wire formats, dead code, and semantic mismatches with the Flash client's expected protocol. Organized by subsystem.
+
+### Item State Packets
+
+1. **`ItemStateComposer` (2376) — Silent data loss on non-integer extradata.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemStateComposer.java`
+   The composer catches `NumberFormatException` and sends `0` whenever `extradata` is not a valid integer. Items with complex extradata (maps, strings, multi-part) silently lose their state on any toggle or interaction that routes through this composer.
+
+2. **`ItemIntStateComposer` / `ItemStateComposer2` (3431) — Correct usage.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemIntStateComposer.java`
+   Used exclusively by `InteractionOneWayGate`. This is the client's `OneWayDoorStatusMessageComposer`. Usage is correct and appropriately scoped.
+
+3. **`ItemExtraDataComposer` (2547) — Underutilized.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemExtraDataComposer.java`
+   Rich extradata update composer. Used only by `InteractionMuteArea`. Many items with complex extradata (map type, string type, vote result type) rely on the heavier `FloorItemUpdateComposer` instead of this targeted composer, sending unnecessary fields on every state change.
+
+4. **`FloorItemUpdateComposer` (3776) — Usability flag always zero. BUG.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/FloorItemUpdateComposer.java:24`
+   The composer always writes `0` for the usability/interactivity field. By contrast, `AddFloorItemComposer` and `RoomFloorItemsComposer` send context-appropriate values (`1` = usable, `2` = interactive/rights-required). After any `updateItem()` call, the client loses the correct interaction cursor for that item. Over 100 call sites across the codebase route through `updateItem()`, meaning this affects virtually every item state change, movement, rotation, and WIRED trigger.
+
+5. **`ItemsDataUpdateComposer` (1453) — Narrow usage.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/ItemsDataUpdateComposer.java`
+   Batch extradata update. Only used by `BattleBanzaiTilesFlicker`. The composer itself is correctly implemented, but no other subsystem uses it despite many cases where batch updates would be more efficient than individual `FloorItemUpdateComposer` calls.
+
+### Room Entry Packets
+
+6. **`RoomOpenComposer` (758) — Empty body. DEFINITE BUG.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomOpenComposer.java`
+   Call site: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomManager.java:650`
+   The composer sends an empty packet body. The client's parser for header 758 (`RoomReadyMessageParser`) expects `String modelName` followed by `int roomId`. Without these fields, the client cannot determine which room model to render. This is a confirmed protocol violation.
+
+7. **`RoomEntryInfoComposer` (header -1) — Disabled and never sent. MISSING.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomEntryInfoComposer.java`
+   The composer exists but its header is set to `-1` (disabled). The client may need this packet during room entry initialization to set up owner status and room entry context. The packet is never sent in any room entry flow.
+
+8. **`RoomNoRightsComposer` (2392) — Never used. DEAD CODE.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomNoRightsComposer.java`
+   The server always sends `RoomRightsComposer` with level `NONE` (0) instead of the purpose-built no-rights packet. The client may handle these differently — `RoomNoRightsComposer` could clear rights UI elements more definitively than a rights-level-zero message.
+
+9. **`RoomPaneComposer` (749) — Possible header collision.**
+   File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomPaneComposer.java`
+   Sends only `(roomId, isOwner)`. Header 749 may map to `RoomVisualizationSettingsComposer` in some client builds, which expects wall/floor/landscape thickness data. If so, the client would parse the room ID and owner flag as visualization parameters.
+
+10. **`RoomQueueStatusMessage` (2208) — Dead code with hardcoded test values.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomQueueStatusMessage.java`
+    Contains hardcoded placeholder data ("Waiting queue for this room is active", target=100). Never instantiated anywhere in the codebase.
+
+11. **`RoomUnknown3Composer` (1033) — Dead code.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomUnknown3Composer.java`
+    Never instantiated. Purpose unknown.
+
+### Trading Packets
+
+12. **`TradeCompleteComposer` — Wrong header constant. BUG.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/trading/TradeCompleteComposer.java:10`
+    Uses `Outgoing.UnknownTradeComposer` (3128) instead of `Outgoing.TradeCompleteComposer` (2369). The client registers its trade-completion parser on header 2369. Sending 3128 means the client may never recognize that a trade completed successfully, potentially leaving the trade UI in a stale state.
+
+13. **`RoomTrade.java:138` — Wrong ID type in TradeClosedComposer. BUG.**
+    File: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomTrade.java:138`
+    Uses `getRoomUnit().getId()` (transient room unit ID, assigned per room visit) instead of `getHabboInfo().getId()` (persistent user ID) when sending `TradeClosedComposer` for item validation failure. The client expects a Habbo user ID to identify which trader caused the close. A room unit ID will either not match any known user or incorrectly match a different user.
+
+14. **`TradeClosedComposer` — Misleading name, correct function.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/trading/TradeClosedComposer.java`
+    Class is named `TradeClosedComposer` but uses `Outgoing.TradeStoppedComposer` (1373). The naming is misleading but functionally correct — the client's parser for 1373 handles trade-close/stop events.
+
+15. **`YouTradingDisabledComposer` and `OtherTradingDisabledComposer` — Dead code.**
+    Files: `src/main/java/com/eu/habbo/messages/outgoing/trading/YouTradingDisabledComposer.java`, `OtherTradingDisabledComposer.java`
+    Neither is ever instantiated. All trading-disabled feedback is handled by `TradeStartFailComposer`.
+
+16. **`TradeCloseEvent.java:23` — Double stop call.**
+    File: `src/main/java/com/eu/habbo/messages/incoming/trading/TradeCloseEvent.java:23`
+    `trade.stopTrade(habbo)` internally calls `room.stopTrade(trade)`, then the event handler calls `room.stopTrade(trade)` again. The second call is redundant and may cause double-processing if `stopTrade` has side effects beyond idempotent removal.
+
+### Effects Packets
+
+17. **`EffectsListAddComposer` (2867) — Field count mismatch. BUG.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/inventory/EffectsListAddComposer.java`
+    Sends 4 fields per effect entry, but `UserEffectsListComposer` (340) sends 6 fields per entry. Both packets describe effects to the same client parser family. The missing fields are `remainingQuantity` and `secondsRemaining`. The client parser likely expects 6 fields and will either read into adjacent data or desync its buffer position.
+
+18. **`UserEffectsListComposer` (340) — Wrong time formula. BUG.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/inventory/UserEffectsListComposer.java:43`
+    Computes seconds remaining as `(now - activationTimestamp) + duration`, which grows over time. The correct formula is `duration - (now - activationTimestamp)`. This means the client displays an ever-increasing remaining time instead of a countdown.
+
+### Room User Packets
+
+19. **`RoomUserStatusComposer` (1640) — Mutates state during composition. SIDE EFFECT.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/users/RoomUserStatusComposer.java:58,79`
+    The composer updates `previousLocation` on room units during serialization. This makes the compose operation non-idempotent — calling it twice changes the data. If the packet is re-sent (e.g., for a late joiner), the previous-location tracking will be incorrect.
+
+20. **`RoomUserNameChangedComposer` (2182) — Abused for chat prefix display.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/users/RoomUserNameChangedComposer.java`
+    Used to temporarily change the displayed username to include a rank prefix during chat. A subsequent packet reverts the name. If the revert packet is lost or the connection drops between the two packets, the user's displayed name will appear permanently prefixed with rank text.
+
+21. **`RoomUserStatusComposer` — Duplicate code paths.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/users/RoomUserStatusComposer.java:40-59,61-81`
+    Two nearly identical serialization blocks exist: one iterating `roomUnits`, one iterating `habbos`. Both produce the same wire format with the same mutation side effects. This duplication increases maintenance risk.
+
+### Guild and Forum Packets
+
+22. **`GuildForumThreadMessagesComposer` (1862) — Misleading name.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/guilds/forums/GuildForumThreadMessagesComposer.java`
+    Despite its name, this composer sends thread header metadata (author, title, timestamps, flags), not thread messages/comments. The actual message content composer is separate.
+
+23. **`GuildEditFailComposer.MAX_GUILDS_JOINED` — Error code defined but never sent.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/guilds/GuildEditFailComposer.java`
+    The `MAX_GUILDS_JOINED` error code constant exists but no server logic validates or enforces a maximum guilds limit. Users can join unlimited guilds without triggering this error.
+
+24. **`GuildConfirmRemoveMemberEvent.java:22` — Null pointer exception due to operator precedence. BUG.**
+    File: `src/main/java/com/eu/habbo/messages/incoming/guilds/GuildConfirmRemoveMemberEvent.java:22`
+    Expression: `member != null && member.getRank().equals(GuildRank.OWNER) || member.getRank().equals(GuildRank.ADMIN)`.
+    Due to Java operator precedence (`&&` binds tighter than `||`), this evaluates as `(member != null && member.getRank().equals(OWNER)) || member.getRank().equals(ADMIN)`. When `member` is null, the first clause is false, then the `||` evaluates `member.getRank()` without a null guard, causing an NPE.
+
+25. **`GuildDeleteEvent.java:35` — Potential NPE on room lookup.**
+    File: `src/main/java/com/eu/habbo/messages/incoming/guilds/GuildDeleteEvent.java:35`
+    `getRoom(guild.getRoomId())` can return null if the guild's room is not currently loaded. The result is used immediately with `.sendComposer()` without a null check.
+
+26. **`UnknownGuild2Composer` (1459) and `UnknownGuildComposer3` (876) — Dead code.**
+    Files: `src/main/java/com/eu/habbo/messages/outgoing/guilds/UnknownGuild2Composer.java`, `UnknownGuildComposer3.java`
+    Never instantiated anywhere in the codebase.
+
+### Navigator and Catalog Packets
+
+27. **`PrivateRoomsComposer` (52) — Hardcoded garbage data. BUG.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/navigator/PrivateRoomsComposer.java:36-45`
+    Contains placeholder strings `"A"`, `"B"`, `"C"`, `"D"`, `"E"` and arbitrary integer values that serve no real purpose. The composer also returns `null` on exception, which will cause an NPE when the caller attempts to write the response to the channel.
+
+28. **`NotEnoughPointsTypeComposer` (3914) — Never sent for catalog purchases. MISSING FEEDBACK.**
+    File: `src/main/java/com/eu/habbo/habbohotel/catalog/CatalogManager.java:886-888`
+    When a user cannot afford a catalog item, the purchase handler silently returns without sending any feedback packet. `NotEnoughPointsTypeComposer` exists and is correctly implemented but is only used for camera purchases. Catalog purchases fail silently from the user's perspective.
+
+29. **`AlertLimitedSoldOutComposer` (377) — Misused for crafting failures.**
+    File: Used in `CraftingEvent.java`, `CraftSecretEvent.java`, and `ExecuteCraftingRecipeEvent.java`
+    All three crafting event handlers send `AlertLimitedSoldOutComposer` when crafting fails. The client displays a "limited edition sold out" dialog instead of a crafting-specific error message. This is a UX mismatch — the user sees a catalog-related error during a crafting workflow.
+
+30. **`NewNavigatorCategoryUserCountComposer` (1455) — Dead code with fake data.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/navigator/NewNavigatorCategoryUserCountComposer.java`
+    Contains hardcoded values (always 0 users, 200 max). Never instantiated.
+
+31. **`SearchResultList.serialize()` — Destructive side effect during serialization.**
+    File: `src/main/java/com/eu/habbo/habbohotel/navigation/SearchResultList.java:47-57`
+    Already documented as Confirmed Defect #6 in PROJECT.md. Permanently removes invisible rooms from the source list during serialization, meaning subsequent serializations of the same list return fewer results.
+
+32. **`OldPublicRoomsComposer` (2726) — Dead constant, no class.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/Outgoing.java`
+    The constant exists in `Outgoing.java` but no corresponding composer class exists. Pure dead code.
+
+### Roller Packets
+
+33. **`ObjectOnRollerComposer` (3207) — Correct implementation.**
+    Files: `FloorItemOnRollerComposer.java`, `RoomUnitOnRollerComposer.java`
+    Both composers correctly use header 3207 and produce wire format matching the client's `SlideObjectBundleMessageParser`. No misuse found.
+
+34. **Missing slide type 3 (teleport slide).**
+    The server never sends slide type 3 (teleport/instant-move). Only type 0 (item slide) and type 2 (avatar slide) are used. Teleporter transitions appear as normal roller animations instead of instant teleport visuals.
+
+35. **Roller ID inconsistency between item and unit composers.**
+    `FloorItemOnRollerComposer` uses `-1` to indicate no roller, `RoomUnitOnRollerComposer` uses `0`. Both values are accepted by the client, but the inconsistency could cause issues if the client ever changes its "no roller" sentinel.
+
+### Messenger Packets
+
+36. **`MessengerErrorComposer` (896) and `UnknownMessengerErrorComposer` (3359) — Dead code.**
+    Files: `src/main/java/com/eu/habbo/messages/outgoing/friends/MessengerErrorComposer.java`, `UnknownMessengerErrorComposer.java`
+    Neither is ever instantiated. No messenger error feedback is sent to the client for any messenger operation failure (friend request rejected, message send failure, etc.).
+
+37. **`RemoveFriendComposer` constant (Outgoing.RemoveFriendComposer = -1) — Dead constant.**
+    File: `src/main/java/com/eu/habbo/messages/outgoing/Outgoing.java`
+    The `Outgoing.RemoveFriendComposer` constant is `-1` (disabled). The actual `RemoveFriendComposer` class works correctly because it internally uses `Outgoing.UpdateFriendComposer` (2800) with a remove-type flag. The dead constant is misleading but not a functional bug.
+
+### Other Behavioral Issues
+
+38. **Auto-idle does not broadcast if user is dancing.**
+    File: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomCycleManager.java:239-241`
+    When a user goes idle while dancing, the idle status is set internally but the idle status update is not broadcast to other room users. When the user later stops dancing, other clients may not see the idle state correctly, causing a visual desync.
+
 ## Final Assessment
 
 - The packet layer is large, broad, and feature-complete enough to support most of the hotel runtime surface.

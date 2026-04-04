@@ -109,6 +109,47 @@ Impact: `hasUnits()` is a lazy-cleanup method: it calls `units.removeIf(unit -> 
 File: `src/main/java/com/eu/habbo/habbohotel/games/Game.java:152-159`
 Impact: For every winner on the winning team, the room owner receives one `GamePlayerExperience` achievement progress tick. The actual winner receives nothing. If the room owner is also a winner, they receive multiple ticks (one per winner). Winners who are not the room owner receive no achievement progress at all.
 
+13. `RoomOpenComposer` (758) sends an empty packet body.
+File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/RoomOpenComposer.java`
+Call site: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomManager.java:650`
+Impact: The client's parser for header 758 (`RoomReadyMessageParser`) expects `String modelName` followed by `int roomId`. The empty body means the client cannot determine which room model to render during room entry.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 6.
+
+14. `TradeCompleteComposer` uses `Outgoing.UnknownTradeComposer` (3128) instead of `Outgoing.TradeCompleteComposer` (2369).
+File: `src/main/java/com/eu/habbo/messages/outgoing/trading/TradeCompleteComposer.java:10`
+Impact: The client registers its trade-completion parser on header 2369. Sending 3128 means the client may never process the trade-completion event, leaving the trade UI in a stale state after a successful trade.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 12.
+
+15. `FloorItemUpdateComposer` (3776) always sends `0` for the usability/interactivity field.
+File: `src/main/java/com/eu/habbo/messages/outgoing/rooms/items/FloorItemUpdateComposer.java:24`
+Impact: After any `updateItem()` call, the client loses the correct interaction cursor for that item. `AddFloorItemComposer` and `RoomFloorItemsComposer` correctly send `1` (usable) or `2` (interactive), but updates always reset to `0`. Over 100 call sites are affected.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 4.
+
+16. `GuildConfirmRemoveMemberEvent.java:22` has an operator precedence bug causing NPE.
+File: `src/main/java/com/eu/habbo/messages/incoming/guilds/GuildConfirmRemoveMemberEvent.java:22`
+Impact: `member != null && member.getRank().equals(OWNER) || member.getRank().equals(ADMIN)` evaluates as `(null-check && OWNER) || ADMIN`. When `member` is null, the `||` branch calls `member.getRank()` without null protection, causing a NullPointerException. Attempting to remove a non-existent guild member crashes the handler.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 24.
+
+17. `EffectsListAddComposer` (2867) sends 4 fields per effect, but the client expects 6.
+File: `src/main/java/com/eu/habbo/messages/outgoing/inventory/EffectsListAddComposer.java`
+Impact: Missing `remainingQuantity` and `secondsRemaining` fields. The client parser expects 6 fields per effect entry (matching `UserEffectsListComposer`), so the short write either causes a parse error or reads into adjacent packet data.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 17.
+
+18. `UserEffectsListComposer` (340) computes remaining time with an inverted formula.
+File: `src/main/java/com/eu/habbo/messages/outgoing/inventory/UserEffectsListComposer.java:43`
+Impact: Calculates `(now - activationTimestamp) + duration` instead of `duration - (now - activationTimestamp)`. The result grows over time instead of counting down, so the client displays an ever-increasing remaining duration for activated effects.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 18.
+
+19. `RoomTrade.java:138` sends room unit ID instead of user ID in TradeClosedComposer.
+File: `src/main/java/com/eu/habbo/habbohotel/rooms/RoomTrade.java:138`
+Impact: Uses `getRoomUnit().getId()` (transient, per-room-visit ID) instead of `getHabboInfo().getId()` (persistent user ID). The client expects a Habbo user ID to identify which trader caused the trade close. A room unit ID will not match any known user in the client's user tracking.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 13.
+
+20. `PrivateRoomsComposer` (52) contains hardcoded placeholder data and returns null on exception.
+File: `src/main/java/com/eu/habbo/messages/outgoing/navigator/PrivateRoomsComposer.java:36-45`
+Impact: Contains meaningless placeholder strings (`"A"`, `"B"`, `"C"`, `"D"`, `"E"`) and arbitrary integers. The composer catches exceptions and returns `null`, which causes an NPE when the caller writes the response to the network channel.
+Note: Detailed analysis in `PACKETS.md` → `Packet Misuse Audit`, item 27.
+
 ## Probable Behavior Risks
 
 1. `AchievementManager.createUserEntry()` inserts initial progress `1` into `users_achievements`, but the caller immediately sets the in-memory state to `0`.
@@ -138,6 +179,8 @@ Note: Additional packet-layer defects exist that are not listed here because the
 - `ByteBuf` heap-backing assumptions in `GameByteDecryption` and `GameByteEncryption` (defects 6–7)
 - RCON framing and charset defects (defects 8–9)
 - `IsFirstLoginOfDayComposer` package mislabeling (defect 10)
+
+Note: A comprehensive packet misuse audit covering 38 findings across all subsystems is documented in `PACKETS.md` → `Packet Misuse Audit`. The audit covers wrong header usage, field count mismatches, dead-code composers, missing feedback packets, and semantic misuse of packets across item state, room entry, trading, effects, guilds, navigator, catalog, roller, and messenger subsystems.
 
 ## Architectural Backbone
 
