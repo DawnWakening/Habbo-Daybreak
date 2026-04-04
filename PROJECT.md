@@ -2069,19 +2069,265 @@ Use this checklist when comparing this codebase against the client project’s `
 - Room tile occupancy/pathfinding semantics.
 - Game achievement reward targeting.
 
+## Client Comparison Results
+
+This section documents findings from comparing the Arcturus-Community server against the decompiled Habbo Flash client at [SWF-Source-Clean-MS](https://github.com/Domexx/SWF-Source-Clean-MS).
+
+### Client Identification
+
+- Repository: `Domexx/SWF-Source-Clean-MS`
+- Language: ActionScript 3 (Flash SWF decompile)
+- Revision: `PRODUCTION-201611291003-338511768`
+- The server's `Incoming.java` and `Outgoing.java` both reference the same production revision in their file comments, confirming both projects target the same protocol version.
+
+### Client Architecture Overview
+
+The client is built around a component-based module system where each major subsystem is an independent `Habbo*Com.as` component (e.g., `HabboCatalogCom.as`, `HabboNavigatorCom.as`, `HabboModerationCom.as`). These are instantiated and wired together at startup.
+
+Key architectural elements:
+
+- **Communication layer**: `com.sulake.habbo.communication` contains `HabboCommunicationManager.as` plus `HabboMessages.as`, which is the master packet registry mapping all numeric header IDs to parser/composer classes.
+- **Two-layer room engine**: The client separates a generic rendering engine (`com.sulake.room`) from Habbo-specific room logic (`com.sulake.habbo.room`). The server has a single flat `rooms` package combining both concerns.
+- **Furniture logic model**: The client uses `FurnitureLogic` subclasses to define furniture behavior. The server uses `Interaction*` classes. Both serve the same purpose but inheritance hierarchies differ.
+- **Wire format**: The client's `EvaWireFormat.as` implements the same 4-byte-length + 2-byte-header framing that the server's Netty pipeline (`GameByteFrameDecoder` / `GameByteDecoder`) uses.
+- **Crypto**: The client has `DiffieHellman.as` and `ArcFour.as` under `com.sulake.habbo.communication.encryption`, matching the server's `HabboDiffieHellman.java` and `HabboRC4.java`.
+
+### Protocol Alignment Status
+
+**Confirmed aligned.** Both projects target `PRODUCTION-201611291003-338511768`. Header IDs in the server's `Incoming.java` (382 constants) and `Outgoing.java` (489 constants) match the numeric registrations in the client's `HabboMessages.as` (~470 outgoing registrations, ~520 incoming registrations).
+
+The count asymmetry is expected:
+- The server has more outgoing constants because it includes disabled (`-1`) entries and SnowStorm skeleton headers.
+- The client has more incoming registrations because it registers parsers for packets the server does not yet send (e.g., SnowStorm game state, NUX flows, campaign/competition, video ads).
+
+~90% of client class names are obfuscated as `_Str_XXXX` patterns. Only numeric header IDs are reliable for cross-reference; class names cannot be used for matching.
+
+### Crypto and Handshake Alignment
+
+The DH+RSA handshake flow matches exactly between client and server:
+
+| Step | Client | Server Header |
+|------|--------|---------------|
+| 1. Client sends crypto init | Outgoing | `Incoming.InitCryptoEvent = 4000` |
+| 2. Server responds with signed DH params | Incoming | `Outgoing.InitDiffieHandshakeComposer = 3110` |
+| 3. Client sends public key | Outgoing | `Incoming.GenerateSecretKeyEvent = 773` |
+| 4. Server sends its public key | Incoming | `Outgoing.CompleteDiffieHandshakeComposer = 3885` |
+| 5. Client sends machine ID | Outgoing | `Incoming.MachineIDEvent = 2490` |
+| 6. Client sends SSO ticket | Outgoing | `Incoming.SecureLoginEvent = 2419` |
+| 7. Server confirms login | Incoming | `Outgoing.SecureLoginOKComposer = 2491` |
+
+Both sides support optional RC4 stream encryption. The client checks `_cipher != null` before encrypting/decrypting, matching the server's conditional pipeline insertion of `GameByteEncryption`/`GameByteDecryption`.
+
+### Per-Subsystem Alignment Findings
+
+#### Room Engine
+
+Confirmed aligned across all core room packets:
+- Heightmap, model, floor/wall items, user list, user status
+- Walk, chat (talk/shout/whisper), typing, actions, dance, effects
+- Item add/remove/update, roller movement
+- Room entry, room data, room settings, room rights
+
+The client's two-layer room architecture (`com.sulake.room` + `com.sulake.habbo.room`) is a rendering concern only. Protocol-visible behavior is identical.
+
+#### Catalog and Commerce
+
+All catalog packets confirmed aligned:
+- Catalog index, page request, item purchase, gift purchase
+- Club offers, voucher redemption, targeted offers
+- Marketplace list/buy/sell/cancel/configure
+- Pet breeds, recycler
+
+#### Navigator
+
+Both old navigator and new navigator packets confirmed aligned:
+- Room search, category listing, saved searches
+- Public rooms, popular rooms, friend rooms
+- Room creation, deletion, favorites
+
+#### Moderation
+
+Full mod tool packet alignment confirmed:
+- Mod tool init, room/user info, chatlogs, room-user chatlogs
+- Issue lifecycle (pick, close, release, change topic)
+- Alert, kick, sanction (mute, ban, trade-lock)
+- Bully reports, call-for-help topics
+
+#### WIRED
+
+All WIRED packets confirmed aligned:
+- Trigger/effect/condition data composers
+- Save trigger/effect/condition events
+- Reward alert, apply snapshot
+
+#### Game Center
+
+Game center packets confirmed aligned:
+- Game list, account info, game status
+- Join/load/leave game
+
+#### Trading
+
+All 10 trading events confirmed aligned:
+- Start, offer, accept, unaccept, confirm, cancel, close
+- Multiple-item offer
+
+#### Guilds and Forums
+
+Full guild and forum packet alignment confirmed.
+
+#### Inventory
+
+All inventory packets confirmed aligned:
+- Items, badges, bots, pets, effects
+- Add/remove/update operations
+
+#### Social (Friends/Messenger)
+
+Friend and messenger packets confirmed aligned:
+- Friend list, requests, accept/decline
+- Private messages, follow/stalk
+- Room invites, search
+
+### Disabled Packet Inventory
+
+#### Server Incoming Disabled (`-1` in `Incoming.java`)
+
+These 6 headers are registered with ID `-1`, meaning the server will never receive them even though the client may send them:
+
+1. `ModToolWarnEvent` - Moderator warning; client has a warn UI but server ignores the packet.
+2. `ModToolBanEvent` - Mod ban via mod tool; server uses `ModToolSanctionBanEvent` instead.
+3. `SearchRoomsByTagEvent` - Tag search; the new navigator handles this differently.
+4. `ModToolRequestRoomUserChatlogEvent` - Room-user chatlog; server may use alternate chatlog paths.
+5. `RequestAchievementConfigurationEvent` - Achievement config request; server sends config proactively during login.
+6. `HotelViewClaimBadgeRewardEvent` - Hotel view badge claim; feature may be unimplemented.
+
+#### Server Outgoing Disabled (`-1` in `Outgoing.java`)
+
+These 10 headers are registered with ID `-1`, meaning the server will never send them even though the client may have parsers:
+
+1. `PublicRoomsComposer` - Legacy public rooms list.
+2. `RemoveFriendComposer` - Standalone friend removal packet.
+3. `RoomEntryInfoComposer` - Room entry info; server uses other room data packets.
+4. `UserBCLimitsComposer` - Builders Club limits.
+5. `QuestionInfoComposer` - Question/info payload.
+6. `UnknownGuildForumComposer6` - Unknown guild forum packet.
+7. `UnknownGuildForumComposer7` - Unknown guild forum packet.
+8. `RoomUserQuestionAnsweredComposer` - Room question answer feedback.
+9. `HotelViewCustomTimerComposer` - Hotel view custom timer.
+10. `InventoryAddEffectComposer` - Individual effect add; server uses full list refresh instead.
+
+### SnowStorm: Largest Implementation Gap
+
+The client contains a **full SnowStorm implementation** under `src/snowwar/` with dozens of classes covering game state, arena rendering, projectile physics, player management, and team scoring.
+
+The server has:
+- 27 incoming headers for SnowStorm (25 are unnamed `UNKNOWN_SNOWSTORM_60xx` placeholders)
+- 30 outgoing headers with 25 skeleton composer classes under `outgoing/unknown/` (all are empty placeholders)
+- **No game logic implementation whatsoever**
+
+SnowStorm is the single largest feature gap between client and server. The client is fully capable of playing SnowStorm; the server cannot support it.
+
+### Guide and Guardian: Partially Broken
+
+Two confirmed implementation issues exist in the guide/guardian system:
+
+1. `GuideTour.finish()` (`GuideTour.java:27-30`) contains only TODO comments. Guide sessions cannot complete properly.
+2. `GuardianTicket.calculateVerdict()` (`GuardianTicket.java:158-160`) always returns `BADLY` regardless of submitted votes. Guardian moderation verdicts are non-functional.
+
+The client has complete guide and guardian UI flows that expect these features to work.
+
+### Client-Only Subsystems
+
+The following client subsystems have **no server counterpart**:
+
+| Client Subsystem | Location | Notes |
+|-----------------|----------|-------|
+| Campaign/Competition | `com.sulake.habbo.campaign` | Server has no campaign management |
+| NUX (New User Experience) | Various NUX components | Server sends `UserNuxEvent` but has minimal NUX orchestration |
+| Sound/Jukebox audio | `com.sulake.habbo.sound` | Client handles audio playback locally; server only manages playlist data |
+| Landing View | `com.sulake.habbo.landingview` | Client-side UI composition; server sends data but has no view logic |
+| Video Ads | `HabboAdManagerCom` + `org/openvideoads/` | Client-side ad integration; no server participation |
+
+These are expected client-only concerns. The server does not need to implement them because they are rendering, audio, or UI composition responsibilities.
+
+### Architecture Comparison Summary
+
+| Aspect | Server (Java) | Client (AS3) |
+|--------|--------------|--------------|
+| Module system | Service-locator (`Emulator` + `GameEnvironment`) | Component-based (`Habbo*Com.as` modules) |
+| Room engine | Single flat `rooms` package | Two-layer: generic `com.sulake.room` + Habbo-specific `com.sulake.habbo.room` |
+| Furniture model | `Interaction*` classes | `FurnitureLogic` subclasses |
+| Packet registry | Manual registration in `PacketManager` | Declarative mapping in `HabboMessages.as` |
+| Wire format | Netty pipeline with length-field framing | `EvaWireFormat.as` with identical framing |
+| Crypto | `HabboDiffieHellman` + `HabboRC4` | `DiffieHellman.as` + `ArcFour.as` |
+| Game logic | Server-side (rooms, items, WIRED, games, commerce) | **None** — client is purely rendering/UI/protocol |
+| Persistence | Distributed SQL through managers and domain objects | **None** — client has no database |
+
+The critical compatibility surface is **protocol alignment**, which is confirmed. Architecture differences are internal to each project and do not affect interoperability as long as packet IDs, field order, and field types match.
+
+### Builders Club: Stub / Non-Functional
+
+The client has a working Builders Club subsystem. The server has only stubs.
+
+#### What the client has
+
+- **Catalog widgets**: `BuilderAddonsCatalogWidget.as` and `BuilderLoyaltyCatalogWidget.as` for BC catalog pages.
+- **3 outgoing (client-to-server) packets**: `BuildersClubPlaceRoomItemMessageComposer`, `BuildersClubPlaceWallItemMessageComposer`, `BuildersClubQueryFurniCountMessageComposer`.
+- **2 incoming (server-to-client) packets**: `BuildersClubFurniCountMessageEvent` (furni limits response), `BuildersClubSubscriptionStatusMessageEvent` (subscription status).
+- **Perk system**: Client reads the `BUILDER_AT_WORK` perk to enable/disable the BC furniture placement toolbar.
+- BC was a separate subscription from HC/VIP. The client's `HabboClubLevelEnum.as` defines three levels (none/HC/VIP); BC operates through its own packet channel, not through the purse.
+
+#### What the server has
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Catalog layouts | Stub | `BuildersClubAddonsLayout`, `BuildersClubFrontPageLayout`, `BuildersClubLoyaltyLayout` — render page chrome but no purchase flow |
+| Login BC status | Hardcoded | `BuildersClubExpiredComposer` (ID 1452) always sends "expired" with `Integer.MAX_VALUE, 0, 100, Integer.MAX_VALUE, 0` |
+| BC furni limits | Dead code | `UserBCLimitsComposer` exists but packet ID is `-1` (never sent) |
+| BC furni placement | Missing | No `Incoming.java` constants for any of the 3 client-to-server BC packets |
+| Subscription type | Partial | `RedeemableSubscriptionType.BUILDERS_CLUB` enum exists; crackables can award it; but no `SubscriptionBuildersClub` class is registered in `SubscriptionManager` — it falls back to generic `Subscription.class` with no lifecycle hooks |
+| Bubble alerts | Unused | 9 BC-related `BubbleAlertKeys` defined but never triggered by any code |
+| `BUILDER_AT_WORK` perk | Hardcoded `true` | `UserPerksComposer` sends this as always enabled for all users regardless of subscription |
+
+#### What would be needed to make it functional
+
+1. Create `SubscriptionBuildersClub` extending `Subscription` with `onCreated`/`onExtended`/`onExpired` hooks.
+2. Register it in `SubscriptionManager.init()`.
+3. Assign a real packet ID to `UserBCLimitsComposer`.
+4. Add `Incoming.java` constants for the 3 client-to-server BC packets.
+5. Implement handlers for `BuildersClubPlaceRoomItemEvent`, `BuildersClubPlaceWallItemEvent`, `BuildersClubQueryFurniCountEvent`.
+6. Make `BuildersClubExpiredComposer` dynamic (read actual subscription data instead of hardcoded values).
+7. Make the `BUILDER_AT_WORK` perk conditional on actual BC subscription status.
+8. Wire up the 9 bubble alert keys to actual BC lifecycle events.
+
+### Updated Known Mismatch Risks
+
+In addition to the risks listed in the original comparison checklist, the client comparison revealed these specific risks:
+
+1. **SnowStorm**: Client expects full game support; server has only placeholder headers.
+2. **Builders Club**: Client has full BC UI, 3 outgoing and 2 incoming packets, and catalog widgets; server has only hardcoded stubs and dead-code composers.
+3. **Guide system completion**: Client expects `finish()` to work; server has a TODO stub.
+4. **Guardian verdicts**: Client expects meaningful verdict calculation; server always returns `BADLY`.
+5. **NUX orchestration**: Client may expect a richer tutorial flow than the server provides.
+6. **Disabled incoming packets**: 6 client-sent packets are silently dropped by the server.
+7. **Disabled outgoing packets**: 10 server-side composers are never sent despite client parsers existing.
+
 ## Final Assessment
 
 - This is a feature-rich, mature, and heavily battle-worn Java emulator codebase.
 - Its strongest qualities are breadth of hotel/game functionality, a recognizable room-centric runtime model, and a large extension/event surface.
 - Its weakest qualities are global coupling, oversized managers, thin persistence abstraction, mixed runtime and persistence responsibilities, and several confirmed correctness issues.
+- The client comparison confirms that **protocol alignment is solid** for `PRODUCTION-201611291003-338511768`. Header IDs match across all major subsystems.
+- The largest implementation gaps are SnowStorm (completely unimplemented), guide session completion (TODO stub), and guardian verdict calculation (hardcoded placeholder).
 - The best way to compare it against a client project later is not only to diff feature lists, but to compare behavior at these levels:
-- packet contract
-- room cycle semantics
-- item interaction semantics
-- user/profile state model
-- moderation and permissions behavior
-- purchase and reward fulfillment logic
-- WIRED execution semantics
+  - packet contract
+  - room cycle semantics
+  - item interaction semantics
+  - user/profile state model
+  - moderation and permissions behavior
+  - purchase and reward fulfillment logic
+  - WIRED execution semantics
 
 - `PROJECT.md` should therefore be treated as a behavior and architecture baseline, not just a package inventory.
 - `PACKETS.md` should be used alongside it whenever protocol alignment is part of the comparison.

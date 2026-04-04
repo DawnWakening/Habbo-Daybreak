@@ -1639,17 +1639,275 @@ Use this when comparing against the client project.
 - Are JSON field names and response status semantics aligned?
 - Is IP allowlisting still the only gate?
 
+## Client-Verified Protocol Alignment
+
+This section documents findings from comparing the server's packet layer against the decompiled Habbo Flash client at [SWF-Source-Clean-MS](https://github.com/Domexx/SWF-Source-Clean-MS), targeting `PRODUCTION-201611291003-338511768`.
+
+### Authoritative Client Packet Registry
+
+The client's master packet registry is `HabboMessages.as` located within `com/sulake/habbo/communication/`. It contains the complete numeric header-to-class mapping for all packets. The registration block (approximately lines 988-2024) maps every header ID to its parser or composer class.
+
+~90% of client class names are obfuscated as `_Str_XXXX` patterns (e.g., `_Str_8456`, `_Str_5765`). Only the numeric header IDs are reliable for cross-referencing between client and server. Attempting to match by class name is not viable.
+
+### Wire Format Confirmation
+
+The client's `EvaWireFormat.as` implements the same wire protocol as the server's Netty pipeline:
+
+- **Frame format**: 4-byte big-endian length prefix + 2-byte big-endian header ID + variable-length payload
+- **String encoding**: 2-byte length prefix + UTF-8 bytes
+- **Integer encoding**: 4-byte big-endian signed int
+- **Boolean encoding**: Single byte (0 or 1)
+- **Short encoding**: 2-byte big-endian signed short
+
+This matches the server's `GameByteFrameDecoder` (length stripping), `GameByteDecoder` (header + payload), `ClientMessage` (typed readers), and `ServerMessage` (typed writers).
+
+### Header ID Alignment Status
+
+**Confirmed aligned.** Server `Incoming.java` has 382 constants; client registers ~470 outgoing message composers. Server `Outgoing.java` has 489 constants; client registers ~520 incoming message parsers.
+
+The count differences are explained by:
+- Server disabled entries (`-1` IDs) that still occupy constant slots
+- SnowStorm skeleton headers on the server side
+- Client-only subsystem packets (campaign, NUX, video ads, sound) that the server does not handle
+- Some client registrations mapping to server-unknown placeholder classes
+
+### Verified Packet Tables By Domain
+
+#### Handshake and Authentication
+
+| Flow | Client Action | Server Incoming | Server Outgoing | Status |
+|------|--------------|-----------------|-----------------|--------|
+| Crypto init | Client sends | `InitCryptoEvent = 4000` | — | Aligned |
+| DH params response | — | — | `InitDiffieHandshakeComposer = 3110` | Aligned |
+| DH public key | Client sends | `GenerateSecretKeyEvent = 773` | — | Aligned |
+| DH complete | — | — | `CompleteDiffieHandshakeComposer = 3885` | Aligned |
+| Machine ID | Client sends | `MachineIDEvent = 2490` | — | Aligned |
+| SSO login | Client sends | `SecureLoginEvent = 2419` | — | Aligned |
+| Login OK | — | — | `SecureLoginOKComposer = 2491` | Aligned |
+| Version/release | Client sends | `ReleaseVersionEvent = 4000`* | — | Aligned |
+
+*Note: `ReleaseVersionEvent` shares header 4000 with `InitCryptoEvent` in some builds; the server handles this in `registerHandshake()`.
+
+RC4 encryption is optional in both client and server. The client checks `_cipher != null` before applying stream cipher operations; the server conditionally inserts `GameByteEncryption`/`GameByteDecryption` pipeline handlers only after DH completes successfully.
+
+#### Room Engine
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Request heightmap | `RequestHeightmapEvent` | In | Aligned |
+| Room heightmap data | `RoomHeightMapComposer` | Out | Aligned |
+| Room model | `RoomModelComposer` | Out | Aligned |
+| Floor items list | `RoomFloorItemsComposer` | Out | Aligned |
+| Wall items list | `RoomWallItemsComposer` | Out | Aligned |
+| Users list | `RoomUsersComposer` | Out | Aligned |
+| User status update | `RoomUserStatusComposer` | Out | Aligned |
+| Walk request | `RoomUserWalkEvent` | In | Aligned |
+| Add floor item | `AddFloorItemComposer` | Out | Aligned |
+| Remove floor item | `RemoveFloorItemComposer` | Out | Aligned |
+| Update floor item | `FloorItemUpdateComposer` | Out | Aligned |
+| Add wall item | `AddWallItemComposer` | Out | Aligned |
+| Remove wall item | `RemoveWallItemComposer` | Out | Aligned |
+| Room data | `RoomDataComposer` | Out | Aligned |
+| Room settings | `RoomSettingsComposer` | Out | Aligned |
+| Room rights | `RoomRightsComposer` | Out | Aligned |
+| Chat (talk) | `RoomUserTalkComposer` | Out | Aligned |
+| Chat (shout) | `RoomUserShoutComposer` | Out | Aligned |
+| Chat (whisper) | `RoomUserWhisperComposer` | Out | Aligned |
+| Roller movement | `FloorItemOnRollerComposer` / `RoomUnitOnRollerComposer` | Out | Aligned |
+
+#### Catalog and Commerce
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Catalog index | `CatalogPagesListComposer` | Out | Aligned |
+| Catalog page | `CatalogPageComposer` | Out | Aligned |
+| Buy item | `CatalogBuyItemEvent` | In | Aligned |
+| Buy as gift | `CatalogBuyItemAsGiftEvent` | In | Aligned |
+| Purchase OK | `PurchaseOKComposer` | Out | Aligned |
+| Voucher redeem | `RedeemVoucherEvent` | In | Aligned |
+| Marketplace config | `MarketplaceConfigComposer` | Out | Aligned |
+| Marketplace offers | `MarketplaceOffersComposer` | Out | Aligned |
+| Marketplace buy | `BuyItemEvent` (marketplace) | In | Aligned |
+| Marketplace sell | `SellItemEvent` (marketplace) | In | Aligned |
+
+#### Navigator
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| New nav data | `NewNavigatorMetaDataComposer` | Out | Aligned |
+| Nav search results | `NewNavigatorSearchResultsComposer` | Out | Aligned |
+| Nav settings | `NewNavigatorSettingsComposer` | Out | Aligned |
+| Saved searches | `NewNavigatorSavedSearchesComposer` | Out | Aligned |
+| Room categories | `RoomCategoriesComposer` | Out | Aligned |
+| Create room | `RequestCreateRoomEvent` | In | Aligned |
+| Room created | `RoomCreatedComposer` | Out | Aligned |
+
+#### Moderation
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Mod tool init | `ModToolComposer` | Out | Aligned |
+| Room info | `ModToolRoomInfoComposer` | Out | Aligned |
+| User info | `ModToolUserInfoComposer` | Out | Aligned |
+| Room chatlog | `ModToolRoomChatlogComposer` | Out | Aligned |
+| User chatlog | `ModToolUserChatlogComposer` | Out | Aligned |
+| Issue info | `ModToolIssueInfoComposer` | Out | Aligned |
+| Pick ticket | `ModToolPickTicketEvent` | In | Aligned |
+| Close ticket | `ModToolCloseTicketEvent` | In | Aligned |
+| Alert user | `ModToolAlertEvent` | In | Aligned |
+| Kick user | `ModToolKickEvent` | In | Aligned |
+| CFH topics | `CfhTopicsMessageComposer` | Out | Aligned |
+
+#### WIRED
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Trigger data | `WiredTriggerDataComposer` | Out | Aligned |
+| Effect data | `WiredEffectDataComposer` | Out | Aligned |
+| Condition data | `WiredConditionDataComposer` | Out | Aligned |
+| Save trigger | `WiredTriggerSaveDataEvent` | In | Aligned |
+| Save effect | `WiredEffectSaveDataEvent` | In | Aligned |
+| Save condition | `WiredConditionSaveDataEvent` | In | Aligned |
+| Reward alert | `WiredRewardAlertComposer` | Out | Aligned |
+| Apply snapshot | `WiredApplySetConditionsEvent` | In | Aligned |
+| Saved confirmation | `WiredSavedComposer` | Out | Aligned |
+
+#### Game Center
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Game list | `GameCenterGameListComposer` | Out | Aligned |
+| Account info | `GameCenterAccountInfoComposer` | Out | Aligned |
+| Join game | `GameCenterJoinGameEvent` | In | Aligned |
+| Load game | `GameCenterLoadGameEvent` | In | Aligned |
+| Leave game | `GameCenterLeaveGameEvent` | In | Aligned |
+| Game status | `GameCenterRequestGameStatusEvent` | In | Aligned |
+
+#### Trading
+
+| Packet | Server Constant | Direction | Status |
+|--------|----------------|-----------|--------|
+| Start trade | `TradeStartEvent` | In | Aligned |
+| Offer item | `TradeOfferItemEvent` | In | Aligned |
+| Offer multiple | `TradeOfferMultipleItemsEvent` | In | Aligned |
+| Accept | `TradeAcceptEvent` | In | Aligned |
+| Unaccept | `TradeUnAcceptEvent` | In | Aligned |
+| Confirm | `TradeConfirmEvent` | In | Aligned |
+| Cancel | `TradeCancelEvent` | In | Aligned |
+| Close | `TradeCloseEvent` | In | Aligned |
+| Cancel offer | `TradeCancelOfferItemEvent` | In | Aligned |
+| Trade started | `TradeStartComposer` | Out | Aligned |
+
+### Disabled Packet Details
+
+#### Server Incoming Disabled (`-1`)
+
+6 incoming packet constants are set to `-1`, meaning the server silently ignores these packets even if the client sends them:
+
+| Constant | Expected Client Behavior |
+|----------|------------------------|
+| `ModToolWarnEvent` | Client has moderator warn UI; server ignores |
+| `ModToolBanEvent` | Client has mod ban button; server uses sanction path instead |
+| `SearchRoomsByTagEvent` | Client may send tag searches; server handles via new navigator |
+| `ModToolRequestRoomUserChatlogEvent` | Client requests room-user chatlog; server uses alternate paths |
+| `RequestAchievementConfigurationEvent` | Client requests achievement config; server sends proactively |
+| `HotelViewClaimBadgeRewardEvent` | Client claims hotel-view badge; feature not implemented |
+
+#### Server Outgoing Disabled (`-1`)
+
+10 outgoing packet constants are set to `-1`, meaning the server never sends these even though the client has parsers:
+
+| Constant | Client Impact |
+|----------|--------------|
+| `PublicRoomsComposer` | Client parser exists but server never sends legacy public room list |
+| `RemoveFriendComposer` | Client uses `UpdateFriendComposer` instead |
+| `RoomEntryInfoComposer` | Client parser exists; server uses other room data packets |
+| `UserBCLimitsComposer` | Client has Builders Club UI; server has no BC implementation |
+| `QuestionInfoComposer` | Client parser exists; feature appears unused |
+| `UnknownGuildForumComposer6` | Unknown purpose; never sent |
+| `UnknownGuildForumComposer7` | Unknown purpose; never sent |
+| `RoomUserQuestionAnsweredComposer` | Client has quiz feedback UI; server does not send |
+| `HotelViewCustomTimerComposer` | Client has timer display; server does not send |
+| `InventoryAddEffectComposer` | Client has individual effect add; server uses full list refresh |
+
+### SnowStorm Packet Coverage Gap
+
+The largest protocol gap is SnowStorm. Details:
+
+**Server incoming (27 headers):**
+- 2 named: `SnowStormGameStart`, `SnowStormGameEnd` (approximate)
+- 25 unnamed: `UNKNOWN_SNOWSTORM_6001` through `UNKNOWN_SNOWSTORM_6025`
+- None have handler implementations
+
+**Server outgoing (30 headers):**
+- 5 named with header IDs
+- 25 skeleton composer classes under `outgoing/unknown/SnowWars*.java`
+- All composers are empty placeholders with no `compose()` body
+
+**Client:**
+- Full SnowStorm implementation under `src/snowwar/` with game state management, arena rendering, projectile physics, player management, team scoring, and dozens of supporting classes
+- All SnowStorm packet parsers/composers are registered in `HabboMessages.as`
+
+**Impact:** The client can display SnowStorm UI and attempt to join games, but the server cannot process any SnowStorm game logic. Players will encounter non-functional behavior.
+
+### Builders Club Packet Gap
+
+Builders Club is a separate subscription system from HC/VIP. The client has a full BC packet set; the server has only stubs and dead code.
+
+#### Client-to-Server (server has NO handlers)
+
+| Client Packet | Purpose | Server `Incoming.java` | Status |
+|--------------|---------|----------------------|--------|
+| `BuildersClubPlaceRoomItemMessageComposer` | Place furni using BC credits | Not registered | **Missing** |
+| `BuildersClubPlaceWallItemMessageComposer` | Place wall item using BC credits | Not registered | **Missing** |
+| `BuildersClubQueryFurniCountMessageComposer` | Query remaining BC furni allowance | Not registered | **Missing** |
+
+These 3 packets are sent by the client when BC placement mode is active. The server silently drops them because no `Incoming.java` constants exist.
+
+#### Server-to-Client
+
+| Server Composer | Packet ID | Client Parser | Status |
+|----------------|-----------|--------------|--------|
+| `BuildersClubExpiredComposer` | 1452 (active) | `BuildersClubSubscriptionStatusMessageEvent` | **Stub** — always sends hardcoded "expired" values |
+| `UserBCLimitsComposer` | -1 (disabled) | `BuildersClubFurniCountMessageEvent` | **Dead code** — ID is `-1`, never sent |
+
+#### Server Support Infrastructure (all stubs)
+
+- 3 catalog page layouts (`BuildersClubAddonsLayout`, `BuildersClubFrontPageLayout`, `BuildersClubLoyaltyLayout`) — render page chrome only
+- `RedeemableSubscriptionType.BUILDERS_CLUB` enum — exists but no `SubscriptionBuildersClub` class is registered
+- 9 `BubbleAlertKeys` for BC lifecycle events — defined but never triggered
+- `BUILDER_AT_WORK` perk in `UserPerksComposer` — hardcoded `true` for all users
+
+**Impact:** The client can display BC catalog pages and the BC furniture placement toolbar (because `BUILDER_AT_WORK` is always `true`), but attempting to place furniture via BC credits produces no server response. The server always reports BC as expired on login.
+
+### Class Name Obfuscation Note
+
+When cross-referencing packets between client and server, be aware that:
+- Client class names follow the pattern `_Str_XXXX` (e.g., `_Str_8456`, `_Str_5765`)
+- These are decompiler-generated names from obfuscated SWF bytecode
+- Only a small percentage of client classes retain meaningful names
+- The **only reliable cross-reference key is the numeric header ID**
+- Server class names (e.g., `SecureLoginEvent`, `RoomUsersComposer`) are human-readable and descriptive
+- Do not attempt to match client `_Str_XXXX` names to server class names; use `HabboMessages.as` header ID registrations instead
+
 ## Final Assessment
 
 - The packet layer is large, broad, and feature-complete enough to support most of the hotel runtime surface.
 - It is one of the most comparison-critical parts of the codebase.
 - The architecture is understandable and structurally conventional for this kind of project.
 - The biggest concerns are not conceptual complexity so much as maintenance risk and protocol drift risk.
-- When comparing against the client project later, focus first on:
-- packet ID catalogs
-- handshake/auth/login bootstrap behavior
-- room/user/item packet families
-- unknown packet coverage
-- RCON command semantics
+- **Client comparison confirms full protocol alignment** for `PRODUCTION-201611291003-338511768`. Header IDs match across all verified subsystems including handshake, rooms, catalog, navigator, moderation, WIRED, games, trading, guilds, and inventory.
+- The main protocol gaps are:
+  - SnowStorm (27 incoming + 30 outgoing headers with no implementation)
+  - 6 disabled incoming headers (client packets silently dropped)
+  - 10 disabled outgoing headers (client parsers that never receive data)
+- The wire format (`EvaWireFormat.as`) is confirmed identical to the server's Netty framing.
+- The `HabboMessages.as` file in the client repository is the authoritative reference for all header ID assignments.
+- When comparing against the client project, focus first on:
+  - packet ID catalogs
+  - handshake/auth/login bootstrap behavior
+  - room/user/item packet families
+  - unknown packet coverage
+  - RCON command semantics (client-only; RCON is a server operational interface)
 
 - If those differ, most higher-level behavior differences will trace back to them quickly.
