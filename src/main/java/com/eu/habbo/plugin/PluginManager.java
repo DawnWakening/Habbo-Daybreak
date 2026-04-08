@@ -28,13 +28,13 @@ import com.eu.habbo.habbohotel.wired.core.WiredEngine;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.habbohotel.wired.highscores.WiredHighscoreManager;
 import com.eu.habbo.messages.PacketManager;
-import com.eu.habbo.messages.incoming.camera.CameraPublishToWebEvent;
-import com.eu.habbo.messages.incoming.camera.CameraPurchaseEvent;
-import com.eu.habbo.messages.incoming.catalog.CheckPetNameEvent;
-import com.eu.habbo.messages.incoming.floorplaneditor.FloorPlanEditorSaveEvent;
-import com.eu.habbo.messages.incoming.hotelview.HotelViewRequestLTDAvailabilityEvent;
-import com.eu.habbo.messages.incoming.rooms.promotions.BuyRoomPromotionEvent;
-import com.eu.habbo.messages.incoming.users.ChangeNameCheckUsernameEvent;
+import com.eu.habbo.messages.incoming.camera.PublishPhotoMessageEvent;
+import com.eu.habbo.messages.incoming.camera.PurchasePhotoMessageEvent;
+import com.eu.habbo.messages.incoming.catalog.ApproveNameMessageEvent;
+import com.eu.habbo.messages.incoming.floorplaneditor.UpdateFloorPropertiesMessageEvent;
+import com.eu.habbo.messages.incoming.hotelview.GetLimitedOfferAppearingNextEvent;
+import com.eu.habbo.messages.incoming.rooms.promotions.PurchaseRoomAdMessageEvent;
+import com.eu.habbo.messages.incoming.users.CheckUserNameMessageEvent;
 import com.eu.habbo.messages.outgoing.catalog.BundleDiscountRulesetMessageComposer;
 import com.eu.habbo.messages.outgoing.catalog.GiftWrappingConfigurationMessageComposer;
 import com.eu.habbo.messages.outgoing.navigator.UserEventCatsMessageComposer;
@@ -140,14 +140,14 @@ public class PluginManager {
 
         HabboManager.WELCOME_MESSAGE = Emulator.getConfig().getValue("hotel.welcome.alert.message").replace("<br>", "<br/>").replace("<br />", "<br/>").replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t");
         Room.PREFIX_FORMAT = Emulator.getConfig().getValue("room.chat.prefix.format");
-        FloorPlanEditorSaveEvent.MAXIMUM_FLOORPLAN_WIDTH_LENGTH = Emulator.getConfig().getInt("hotel.floorplan.max.widthlength");
-        FloorPlanEditorSaveEvent.MAXIMUM_FLOORPLAN_SIZE = Emulator.getConfig().getInt("hotel.floorplan.max.totalarea");
+        UpdateFloorPropertiesMessageEvent.MAXIMUM_FLOORPLAN_WIDTH_LENGTH = Emulator.getConfig().getInt("hotel.floorplan.max.widthlength");
+        UpdateFloorPropertiesMessageEvent.MAXIMUM_FLOORPLAN_SIZE = Emulator.getConfig().getInt("hotel.floorplan.max.totalarea");
 
-        HotelViewRequestLTDAvailabilityEvent.ENABLED = Emulator.getConfig().getBoolean("hotel.view.ltdcountdown.enabled");
-        HotelViewRequestLTDAvailabilityEvent.TIMESTAMP = Emulator.getConfig().getInt("hotel.view.ltdcountdown.timestamp");
-        HotelViewRequestLTDAvailabilityEvent.ITEM_ID = Emulator.getConfig().getInt("hotel.view.ltdcountdown.itemid");
-        HotelViewRequestLTDAvailabilityEvent.PAGE_ID = Emulator.getConfig().getInt("hotel.view.ltdcountdown.pageid");
-        HotelViewRequestLTDAvailabilityEvent.ITEM_NAME = Emulator.getConfig().getValue("hotel.view.ltdcountdown.itemname");
+        GetLimitedOfferAppearingNextEvent.ENABLED = Emulator.getConfig().getBoolean("hotel.view.ltdcountdown.enabled");
+        GetLimitedOfferAppearingNextEvent.TIMESTAMP = Emulator.getConfig().getInt("hotel.view.ltdcountdown.timestamp");
+        GetLimitedOfferAppearingNextEvent.ITEM_ID = Emulator.getConfig().getInt("hotel.view.ltdcountdown.itemid");
+        GetLimitedOfferAppearingNextEvent.PAGE_ID = Emulator.getConfig().getInt("hotel.view.ltdcountdown.pageid");
+        GetLimitedOfferAppearingNextEvent.ITEM_NAME = Emulator.getConfig().getValue("hotel.view.ltdcountdown.itemname");
         InteractionPostIt.STICKYPOLE_PREFIX_TEXT = Emulator.getConfig().getValue("hotel.room.stickypole.prefix");
         TargetOffer.ACTIVE_TARGET_OFFER_ID = Emulator.getConfig().getInt("hotel.targetoffer.id");
         WordFilter.DEFAULT_REPLACEMENT = Emulator.getConfig().getValue("hotel.wordfilter.replacement");
@@ -156,18 +156,18 @@ public class PluginManager {
         AchievementManager.TALENTTRACK_ENABLED = Emulator.getConfig().getBoolean("hotel.talenttrack.enabled");
         InteractionRoller.NO_RULES = Emulator.getConfig().getBoolean("hotel.room.rollers.norules");
         RoomManager.SHOW_PUBLIC_IN_POPULAR_TAB = Emulator.getConfig().getBoolean("hotel.navigator.populartab.publics");
-        CheckPetNameEvent.PET_NAME_LENGTH_MINIMUM = Emulator.getConfig().getInt("hotel.pets.name.length.min");
-        CheckPetNameEvent.PET_NAME_LENGTH_MAXIMUM = Emulator.getConfig().getInt("hotel.pets.name.length.max");
+        ApproveNameMessageEvent.PET_NAME_LENGTH_MINIMUM = Emulator.getConfig().getInt("hotel.pets.name.length.min");
+        ApproveNameMessageEvent.PET_NAME_LENGTH_MAXIMUM = Emulator.getConfig().getInt("hotel.pets.name.length.max");
 
 
-        ChangeNameCheckUsernameEvent.VALID_CHARACTERS = Emulator.getConfig().getValue("allowed.username.characters", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-=!?@:,.");
-        CameraPublishToWebEvent.CAMERA_PUBLISH_POINTS = Emulator.getConfig().getInt("camera.price.points.publish", 5);
-        CameraPublishToWebEvent.CAMERA_PUBLISH_POINTS_TYPE = Emulator.getConfig().getInt("camera.price.points.publish.type", 0);
-        CameraPurchaseEvent.CAMERA_PURCHASE_CREDITS = Emulator.getConfig().getInt("camera.price.credits", 5);
-        CameraPurchaseEvent.CAMERA_PURCHASE_POINTS = Emulator.getConfig().getInt("camera.price.points", 5);
-        CameraPurchaseEvent.CAMERA_PURCHASE_POINTS_TYPE = Emulator.getConfig().getInt("camera.price.points.type", 0);
+        CheckUserNameMessageEvent.VALID_CHARACTERS = Emulator.getConfig().getValue("allowed.username.characters", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-=!?@:,.");
+        PublishPhotoMessageEvent.CAMERA_PUBLISH_POINTS = Emulator.getConfig().getInt("camera.price.points.publish", 5);
+        PublishPhotoMessageEvent.CAMERA_PUBLISH_POINTS_TYPE = Emulator.getConfig().getInt("camera.price.points.publish.type", 0);
+        PurchasePhotoMessageEvent.CAMERA_PURCHASE_CREDITS = Emulator.getConfig().getInt("camera.price.credits", 5);
+        PurchasePhotoMessageEvent.CAMERA_PURCHASE_POINTS = Emulator.getConfig().getInt("camera.price.points", 5);
+        PurchasePhotoMessageEvent.CAMERA_PURCHASE_POINTS_TYPE = Emulator.getConfig().getInt("camera.price.points.type", 0);
 
-        BuyRoomPromotionEvent.ROOM_PROMOTION_BADGE = Emulator.getConfig().getValue("room.promotion.badge", "RADZZ");
+        PurchaseRoomAdMessageEvent.ROOM_PROMOTION_BADGE = Emulator.getConfig().getValue("room.promotion.badge", "RADZZ");
         BotManager.MAXIMUM_BOT_INVENTORY_SIZE = Emulator.getConfig().getInt("hotel.bots.max.inventory");
         PetManager.MAXIMUM_PET_INVENTORY_SIZE = Emulator.getConfig().getInt("hotel.pets.max.inventory");
 

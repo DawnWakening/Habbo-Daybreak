@@ -5,7 +5,7 @@ import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.incoming.catalog.marketplace.RequestOffersEvent;
+import com.eu.habbo.messages.incoming.catalog.marketplace.GetMarketplaceOffersMessageEvent;
 import com.eu.habbo.messages.outgoing.catalog.marketplace.MarketplaceBuyOfferResultMessageComposer;
 import com.eu.habbo.messages.outgoing.catalog.marketplace.MarketplaceCancelOfferResultMessageComposer;
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
@@ -64,7 +64,7 @@ public class MarketPlace {
 
     private static void takeBackItem(Habbo habbo, MarketPlaceOffer offer) {
         if (offer != null && habbo.getInventory().getMarketplaceItems().contains(offer)) {
-            RequestOffersEvent.cachedResults.clear();
+            GetMarketplaceOffersMessageEvent.cachedResults.clear();
             try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
                 try (PreparedStatement ownerCheck = connection.prepareStatement("SELECT user_id FROM marketplace_items WHERE id = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
                     ownerCheck.setInt(1, offer.getOfferId());
@@ -239,7 +239,7 @@ public class MarketPlace {
 
 
     public static void buyItem(int offerId, GameClient client) {
-        RequestOffersEvent.cachedResults.clear();
+        GetMarketplaceOffersMessageEvent.cachedResults.clear();
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM marketplace_items WHERE id = ? LIMIT 1")) {
                 statement.setInt(1, offerId);
@@ -342,7 +342,7 @@ public class MarketPlace {
             return false;
         }
 
-        RequestOffersEvent.cachedResults.clear();
+        GetMarketplaceOffersMessageEvent.cachedResults.clear();
 
         client.sendResponse(new FurniListRemoveMessageComposer(event.item.getGiftAdjustedId()));
         client.sendResponse(new FurniListInvalidateMessageComposer());

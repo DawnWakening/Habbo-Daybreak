@@ -27,7 +27,7 @@ import com.eu.habbo.habbohotel.polls.Poll;
 import com.eu.habbo.habbohotel.polls.PollManager;
 import com.eu.habbo.habbohotel.users.*;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
-import com.eu.habbo.messages.incoming.users.UserNuxEvent;
+import com.eu.habbo.messages.incoming.users.NewUserExperienceScriptProceedEvent;
 import com.eu.habbo.messages.outgoing.generic.alerts.GenericErrorMessagesComposer;
 import com.eu.habbo.messages.outgoing.hotelview.CloseConnectionMessageComposer;
 import com.eu.habbo.messages.outgoing.polls.PollOfferMessageComposer;
@@ -929,7 +929,7 @@ public class RoomManager {
         room.habboEntered(habbo);
 
         if (!habbo.getHabboStats().nux && (room.isOwner(habbo) || room.isPublicRoom())) {
-            UserNuxEvent.handle(habbo);
+            NewUserExperienceScriptProceedEvent.handle(habbo);
         }
     }
 
