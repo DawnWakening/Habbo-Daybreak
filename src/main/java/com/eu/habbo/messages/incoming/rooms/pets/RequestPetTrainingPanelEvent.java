@@ -2,7 +2,7 @@ package com.eu.habbo.messages.incoming.rooms.pets;
 
 import com.eu.habbo.habbohotel.pets.Pet;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.pets.PetTrainingPanelComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.PetTrainingPanelMessageComposer;
 
 public class RequestPetTrainingPanelEvent extends MessageHandler {
     @Override
@@ -15,6 +15,6 @@ public class RequestPetTrainingPanelEvent extends MessageHandler {
         Pet pet = this.client.getHabbo().getHabboInfo().getCurrentRoom().getPet(petId);
 
         if (pet != null)
-            this.client.sendResponse(new PetTrainingPanelComposer(pet));
+            this.client.sendResponse(new PetTrainingPanelMessageComposer(pet));
     }
 }

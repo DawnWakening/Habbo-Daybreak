@@ -2,7 +2,7 @@ package com.eu.habbo.habbohotel.rooms;
 
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.generic.alerts.GenericAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.HabboBroadcastMessageComposer;
 
 /**
  * Manages all messaging and communication within a room.
@@ -78,6 +78,6 @@ public class RoomMessagingManager {
      * Sends an alert message to all Habbos in the room.
      */
     public void alert(String message) {
-        this.sendComposer(new GenericAlertComposer(message).compose());
+        this.sendComposer(new HabboBroadcastMessageComposer(message).compose());
     }
 }

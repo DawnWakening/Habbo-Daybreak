@@ -5,6 +5,6 @@ import com.eu.habbo.messages.incoming.MessageHandler;
 public class RequestCatalogIndexEvent extends MessageHandler {
     @Override
     public void handle() throws Exception {
-        //this.client.sendResponse(new CatalogPagesListComposer(this.client.getHabbo(), "NORMAL"));
+        //this.client.sendResponse(new CatalogPagesListMessageComposer(this.client.getHabbo(), "NORMAL"));
     }
 }

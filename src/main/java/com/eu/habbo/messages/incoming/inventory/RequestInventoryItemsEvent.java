@@ -2,7 +2,7 @@ package com.eu.habbo.messages.incoming.inventory;
 
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.inventory.InventoryItemsComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListMessageComposer;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -19,7 +19,7 @@ public class RequestInventoryItemsEvent extends MessageHandler {
         int totalItems = this.client.getHabbo().getInventory().getItemsComponent().getItems().size();
 
         if (totalItems == 0) {
-                this.client.sendResponse(new InventoryItemsComposer(0, 1, new TIntObjectHashMap<>()));
+                this.client.sendResponse(new FurniListMessageComposer(0, 1, new TIntObjectHashMap<>()));
                 return;
             }
             
@@ -53,13 +53,13 @@ public class RequestInventoryItemsEvent extends MessageHandler {
                 }
 
                 if (count == 1000) {
-                    this.client.sendResponse(new InventoryItemsComposer(fragmentNumber, totalFragments, items));
+                    this.client.sendResponse(new FurniListMessageComposer(fragmentNumber, totalFragments, items));
                     count = 0;
                     items.clear();
                 }
             }
 
-            if(count > 0 && items.size() > 0) this.client.sendResponse(new InventoryItemsComposer(fragmentNumber, totalFragments, items));
+            if(count > 0 && items.size() > 0) this.client.sendResponse(new FurniListMessageComposer(fragmentNumber, totalFragments, items));
         }
     }
 }

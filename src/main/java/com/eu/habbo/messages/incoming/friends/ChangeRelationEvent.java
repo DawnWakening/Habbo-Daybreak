@@ -2,7 +2,7 @@ package com.eu.habbo.messages.incoming.friends;
 
 import com.eu.habbo.habbohotel.messenger.MessengerBuddy;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.friends.UpdateFriendComposer;
+import com.eu.habbo.messages.outgoing.friends.FriendListUpdateMessageComposer;
 import com.eu.habbo.plugin.events.users.friends.UserRelationShipEvent;
 
 public class ChangeRelationEvent extends MessageHandler {
@@ -16,7 +16,7 @@ public class ChangeRelationEvent extends MessageHandler {
             UserRelationShipEvent event = new UserRelationShipEvent(this.client.getHabbo(), buddy, relationId);
             if (!event.isCancelled()) {
                 buddy.setRelation(event.relationShip);
-                this.client.sendResponse(new UpdateFriendComposer(this.client.getHabbo(), buddy, 0));
+                this.client.sendResponse(new FriendListUpdateMessageComposer(this.client.getHabbo(), buddy, 0));
             }
         }
     }

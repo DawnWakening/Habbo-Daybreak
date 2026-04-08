@@ -12,14 +12,14 @@ import com.eu.habbo.habbohotel.users.DanceType;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.outgoing.generic.alerts.GenericErrorMessagesComposer;
-import com.eu.habbo.messages.outgoing.inventory.AddPetComposer;
-import com.eu.habbo.messages.outgoing.rooms.pets.RoomPetComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUnitIdleComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDanceComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserEffectComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserHandItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserRemoveComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.inventory.PetAddedToInventoryMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.PetFigureUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.SleepMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.DanceMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.AvatarEffectMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.CarryObjectMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import gnu.trove.TCollections;
 import gnu.trove.iterator.TIntObjectIterator;
@@ -229,7 +229,7 @@ public class RoomUnitManager {
         }
 
         if (sendRemovePacket && habbo.getRoomUnit() != null && !habbo.getRoomUnit().isTeleporting) {
-            this.room.sendComposer(new RoomUserRemoveComposer(habbo.getRoomUnit()).compose());
+            this.room.sendComposer(new UserRemoveMessageComposer(habbo.getRoomUnit()).compose());
         }
 
         if (habbo.getRoomUnit().getCurrentLocation() != null) {
@@ -401,7 +401,7 @@ public class RoomUnitManager {
             for (Habbo habbo : habbos) {
                 roomUnits.add(habbo.getRoomUnit());
             }
-            this.room.sendComposer(new RoomUserStatusComposer(roomUnits, true).compose());
+            this.room.sendComposer(new UserUpdateMessageComposer(roomUnits, true).compose());
         }
     }
 
@@ -599,7 +599,7 @@ public class RoomUnitManager {
                 this.currentBots.remove(bot.getId());
                 bot.getRoomUnit().setInRoom(false);
                 bot.setRoom(null);
-                this.room.sendComposer(new RoomUserRemoveComposer(bot.getRoomUnit()).compose());
+                this.room.sendComposer(new UserRemoveMessageComposer(bot.getRoomUnit()).compose());
                 bot.setRoomUnit(null);
                 return true;
             }
@@ -714,7 +714,7 @@ public class RoomUnitManager {
         }
 
         if (!bots.isEmpty()) {
-            this.room.sendComposer(new RoomUserStatusComposer(
+            this.room.sendComposer(new UserUpdateMessageComposer(
                 bots.stream().map(Bot::getRoomUnit).collect(Collectors.toCollection(THashSet::new)), 
                 true).compose());
         }
@@ -859,7 +859,7 @@ public class RoomUnitManager {
             }
             
             this.addPet(pet);
-            this.room.sendComposer(new RoomPetComposer(pet).compose());
+            this.room.sendComposer(new PetFigureUpdateMessageComposer(pet).compose());
         }
     }
 
@@ -947,7 +947,7 @@ public class RoomUnitManager {
         }
 
         if (!pets.isEmpty()) {
-            this.room.sendComposer(new RoomUserStatusComposer(
+            this.room.sendComposer(new UserUpdateMessageComposer(
                 pets.stream().map(Pet::getRoomUnit).collect(Collectors.toCollection(THashSet::new)), 
                 true).compose());
         }
@@ -986,9 +986,9 @@ public class RoomUnitManager {
             
             pet.run();  // Run synchronously to ensure DB is updated before returning pet to inventory
             habbo.getInventory().getPetsComponent().addPet(pet);
-            habbo.getClient().sendResponse(new AddPetComposer(pet));
+            habbo.getClient().sendResponse(new PetAddedToInventoryMessageComposer(pet));
             this.currentPets.remove(pet.getId());
-            this.room.sendComposer(new RoomUserRemoveComposer(pet.getRoomUnit()).compose());
+            this.room.sendComposer(new UserRemoveMessageComposer(pet.getRoomUnit()).compose());
         }
     }
 
@@ -1036,11 +1036,11 @@ public class RoomUnitManager {
             Habbo owner = Emulator.getGameEnvironment().getHabboManager().getHabbo(pet.getUserId());
             if (owner != null) {
                 owner.getInventory().getPetsComponent().addPet(pet);
-                owner.getClient().sendResponse(new AddPetComposer(pet));
+                owner.getClient().sendResponse(new PetAddedToInventoryMessageComposer(pet));
             }
             
             this.currentPets.remove(pet.getId());
-            this.room.sendComposer(new RoomUserRemoveComposer(pet.getRoomUnit()).compose());
+            this.room.sendComposer(new UserRemoveMessageComposer(pet.getRoomUnit()).compose());
         }
     }
 
@@ -1142,7 +1142,7 @@ public class RoomUnitManager {
 
         if (this.room.isAllowEffects() && roomUnit != null) {
             roomUnit.setEffectId(effectId, duration);
-            this.room.sendComposer(new RoomUserEffectComposer(roomUnit).compose());
+            this.room.sendComposer(new AvatarEffectMessageComposer(roomUnit).compose());
         }
     }
 
@@ -1158,7 +1158,7 @@ public class RoomUnitManager {
      */
     public void giveHandItem(RoomUnit roomUnit, int handItem) {
         roomUnit.setHandItem(handItem);
-        this.room.sendComposer(new RoomUserHandItemComposer(roomUnit).compose());
+        this.room.sendComposer(new CarryObjectMessageComposer(roomUnit).compose());
     }
 
     // ==================== IDLE AND DANCE ====================
@@ -1173,7 +1173,7 @@ public class RoomUnitManager {
             this.dance(habbo, DanceType.NONE);
         }
 
-        this.room.sendComposer(new RoomUnitIdleComposer(habbo.getRoomUnit()).compose());
+        this.room.sendComposer(new SleepMessageComposer(habbo.getRoomUnit()).compose());
         WiredManager.triggerUserIdles(this.room, habbo.getRoomUnit());
     }
 
@@ -1185,7 +1185,7 @@ public class RoomUnitManager {
             return;
         }
         habbo.getRoomUnit().resetIdleTimer();
-        this.room.sendComposer(new RoomUnitIdleComposer(habbo.getRoomUnit()).compose());
+        this.room.sendComposer(new SleepMessageComposer(habbo.getRoomUnit()).compose());
         WiredManager.triggerUserUnidles(this.room, habbo.getRoomUnit());
     }
 
@@ -1203,7 +1203,7 @@ public class RoomUnitManager {
         if (unit.getDanceType() != danceType) {
             boolean isDancing = !unit.getDanceType().equals(DanceType.NONE);
             unit.setDanceType(danceType);
-            this.room.sendComposer(new RoomUserDanceComposer(unit).compose());
+            this.room.sendComposer(new DanceMessageComposer(unit).compose());
 
             if (danceType.equals(DanceType.NONE) && isDancing) {
                 WiredManager.triggerUserStopsDancing(this.room, unit);
@@ -1343,7 +1343,7 @@ public class RoomUnitManager {
             RoomUserRotation.values()[habbo.getRoomUnit().getBodyRotation().getValue()
                 - habbo.getRoomUnit().getBodyRotation().getValue() % 2]);
         habbo.getRoomUnit().setStatus(RoomUnitStatus.SIT, 0.5 + "");
-        this.room.sendComposer(new RoomUserStatusComposer(habbo.getRoomUnit()).compose());
+        this.room.sendComposer(new UserUpdateMessageComposer(habbo.getRoomUnit()).compose());
     }
 
     /**
@@ -1361,7 +1361,7 @@ public class RoomUnitManager {
                 RoomUserRotation.values()[habbo.getRoomUnit().getBodyRotation().getValue()
                     - habbo.getRoomUnit().getBodyRotation().getValue() % 2]);
             habbo.getRoomUnit().removeStatus(RoomUnitStatus.SIT);
-            this.room.sendComposer(new RoomUserStatusComposer(habbo.getRoomUnit()).compose());
+            this.room.sendComposer(new UserUpdateMessageComposer(habbo.getRoomUnit()).compose());
         }
     }
 

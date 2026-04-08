@@ -8,10 +8,10 @@ import com.eu.habbo.habbohotel.rooms.FurnitureMovementError;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.inventory.RemoveHabboItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.AddWallItemComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemAddMessageComposer;
 
 public class PostItPlaceEvent extends MessageHandler {
     @Override
@@ -33,9 +33,9 @@ public class PostItPlaceEvent extends MessageHandler {
                         item.setWallPosition(location);
                         item.setUserId(this.client.getHabbo().getHabboInfo().getId());
                         item.needsUpdate(true);
-                        room.sendComposer(new AddWallItemComposer(item, this.client.getHabbo().getHabboInfo().getUsername()).compose());
+                        room.sendComposer(new ItemAddMessageComposer(item, this.client.getHabbo().getHabboInfo().getUsername()).compose());
                         this.client.getHabbo().getInventory().getItemsComponent().removeHabboItem(item);
-                        this.client.sendResponse(new RemoveHabboItemComposer(item.getGiftAdjustedId()));
+                        this.client.sendResponse(new FurniListRemoveMessageComposer(item.getGiftAdjustedId()));
                         item.setFromGift(false);
                         Emulator.getThreading().run(item);
 
@@ -46,10 +46,10 @@ public class PostItPlaceEvent extends MessageHandler {
 
                     }
                     else {
-                        this.client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, FurnitureMovementError.MAX_STICKIES.errorCode));
+                        this.client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, FurnitureMovementError.MAX_STICKIES.errorCode));
                     }
 
-                    //this.client.sendResponse(new PostItStickyPoleOpenComposer(item));
+                    //this.client.sendResponse(new RequestSpamWallPostItMessageComposer(item));
                 }
             }
         }

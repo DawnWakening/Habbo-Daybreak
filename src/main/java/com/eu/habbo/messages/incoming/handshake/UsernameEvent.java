@@ -5,9 +5,9 @@ import com.eu.habbo.habbohotel.achievements.AchievementManager;
 import com.eu.habbo.habbohotel.campaign.calendar.CalendarCampaign;
 import com.eu.habbo.habbohotel.catalog.TargetOffer;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.catalog.TargetedOfferComposer;
-import com.eu.habbo.messages.outgoing.events.calendar.AdventCalendarDataComposer;
-import com.eu.habbo.messages.outgoing.habboway.nux.NuxAlertComposer;
+import com.eu.habbo.messages.outgoing.catalog.TargetedOfferMessageComposer;
+import com.eu.habbo.messages.outgoing.events.calendar.CampaignCalendarDataMessageComposer;
+import com.eu.habbo.messages.outgoing.habboway.nux.InClientLinkMessageComposer;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -87,8 +87,8 @@ public class UsernameEvent extends MessageHandler {
             if(campaign != null){
                     long daysBetween = DAYS.between(new Timestamp(campaign.getStartTimestamp() * 1000L).toInstant(), new Date().toInstant());
                     if(daysBetween >= 0) {
-                        this.client.sendResponse(new AdventCalendarDataComposer(campaign.getName(), campaign.getImage(), campaign.getTotalDays(), (int) daysBetween, this.client.getHabbo().getHabboStats().calendarRewardsClaimed, campaign.getLockExpired()));
-                        this.client.sendResponse(new NuxAlertComposer("openView/calendar"));
+                        this.client.sendResponse(new CampaignCalendarDataMessageComposer(campaign.getName(), campaign.getImage(), campaign.getTotalDays(), (int) daysBetween, this.client.getHabbo().getHabboStats().calendarRewardsClaimed, campaign.getLockExpired()));
+                        this.client.sendResponse(new InClientLinkMessageComposer("openView/calendar"));
                     }
             };
         }
@@ -97,7 +97,7 @@ public class UsernameEvent extends MessageHandler {
             TargetOffer offer = Emulator.getGameEnvironment().getCatalogManager().getTargetOffer(TargetOffer.ACTIVE_TARGET_OFFER_ID);
 
             if (offer != null) {
-                this.client.sendResponse(new TargetedOfferComposer(this.client.getHabbo(), offer));
+                this.client.sendResponse(new TargetedOfferMessageComposer(this.client.getHabbo(), offer));
             }
         }
 

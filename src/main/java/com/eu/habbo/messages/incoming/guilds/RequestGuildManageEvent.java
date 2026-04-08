@@ -9,7 +9,7 @@ import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.guilds.GuildManageComposer;
+import com.eu.habbo.messages.outgoing.guilds.GuildEditInfoMessageComposer;
 
 public class RequestGuildManageEvent extends MessageHandler {
     private static final String ACC_GUILD_ADMIN = "acc_guild_admin";
@@ -42,7 +42,7 @@ public class RequestGuildManageEvent extends MessageHandler {
         }
 
         if (this.hasManageRights(guildManager, guild, habbo)) {
-            this.client.sendResponse(new GuildManageComposer(guild));
+            this.client.sendResponse(new GuildEditInfoMessageComposer(guild));
         }
     }
 

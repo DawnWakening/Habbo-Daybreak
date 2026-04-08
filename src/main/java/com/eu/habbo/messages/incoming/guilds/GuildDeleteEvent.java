@@ -6,9 +6,9 @@ import com.eu.habbo.habbohotel.guilds.GuildMember;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.guilds.GuildFavoriteRoomUserUpdateComposer;
-import com.eu.habbo.messages.outgoing.guilds.RemoveGuildFromRoomComposer;
-import com.eu.habbo.messages.outgoing.rooms.RoomDataComposer;
+import com.eu.habbo.messages.outgoing.guilds.FavoriteMembershipUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.guilds.HabboGroupDeactivatedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.GetGuestRoomResultMessageComposer;
 import com.eu.habbo.plugin.events.guilds.GuildDeletedEvent;
 import gnu.trove.set.hash.THashSet;
 
@@ -27,16 +27,16 @@ public class GuildDeleteEvent extends MessageHandler {
                     Habbo habbo = Emulator.getGameServer().getGameClientManager().getHabbo(member.getUserId());
                     if (habbo != null)
                         if (habbo.getHabboInfo().getCurrentRoom() != null && habbo.getRoomUnit() != null)
-                            habbo.getHabboInfo().getCurrentRoom().sendComposer(new GuildFavoriteRoomUserUpdateComposer(habbo.getRoomUnit(), null).compose());
+                            habbo.getHabboInfo().getCurrentRoom().sendComposer(new FavoriteMembershipUpdateMessageComposer(habbo.getRoomUnit(), null).compose());
                 }
 
                 Emulator.getGameEnvironment().getGuildManager().deleteGuild(guild);
                 Emulator.getPluginManager().fireEvent(new GuildDeletedEvent(guild, this.client.getHabbo()));
-                Emulator.getGameEnvironment().getRoomManager().getRoom(guild.getRoomId()).sendComposer(new RemoveGuildFromRoomComposer(guildId).compose());
+                Emulator.getGameEnvironment().getRoomManager().getRoom(guild.getRoomId()).sendComposer(new HabboGroupDeactivatedMessageComposer(guildId).compose());
 
                 if (this.client.getHabbo().getHabboInfo().getCurrentRoom() != null) {
                     if (guild.getRoomId() == this.client.getHabbo().getHabboInfo().getCurrentRoom().getId()) {
-                        this.client.sendResponse(new RoomDataComposer(this.client.getHabbo().getHabboInfo().getCurrentRoom(), this.client.getHabbo(), false, false));
+                        this.client.sendResponse(new GetGuestRoomResultMessageComposer(this.client.getHabbo().getHabboInfo().getCurrentRoom(), this.client.getHabbo(), false, false));
                     }
                 }
             }

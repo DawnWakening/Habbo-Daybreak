@@ -9,8 +9,8 @@ import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserEffectComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserWhisperComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.AvatarEffectMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.WhisperMessageComposer;
 import com.eu.habbo.threading.runnables.RoomUnitTeleport;
 import com.eu.habbo.threading.runnables.SendRoomUnitEffectComposer;
 import org.slf4j.Logger;
@@ -71,7 +71,7 @@ public final class DefaultWiredServices implements WiredServices {
         if (room == null || user == null || tile == null) return;
         
         // Show teleport effect
-        room.sendComposer(new RoomUserEffectComposer(user, 4).compose());
+        room.sendComposer(new AvatarEffectMessageComposer(user, 4).compose());
         Emulator.getThreading().run(new SendRoomUnitEffectComposer(room, user), WiredManager.TELEPORT_DELAY + 1000);
         
         // Execute teleport
@@ -119,7 +119,7 @@ public final class DefaultWiredServices implements WiredServices {
         
         Habbo habbo = room.getHabbo(user);
         if (habbo != null) {
-            habbo.getClient().sendResponse(new RoomUserWhisperComposer(
+            habbo.getClient().sendResponse(new WhisperMessageComposer(
                 new RoomChatMessage(message, habbo, habbo, RoomChatMessageBubbles.WIRED)
             ));
         }
@@ -130,7 +130,7 @@ public final class DefaultWiredServices implements WiredServices {
         if (room == null || user == null) return;
         
         user.setHandItem(handItemId);
-        room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.users.RoomUserHandItemComposer(user).compose());
+        room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.users.CarryObjectMessageComposer(user).compose());
     }
 
     @Override
@@ -256,7 +256,7 @@ public final class DefaultWiredServices implements WiredServices {
             List<Bot> bots = room.getBots(botName);
             for (Bot bot : bots) {
                 habbo.getClient().sendResponse(
-                    new RoomUserWhisperComposer(
+                    new WhisperMessageComposer(
                         new RoomChatMessage(message, bot.getRoomUnit(), RoomChatMessageBubbles.getBubble(bot.getBubbleId()))
                     )
                 );
@@ -308,7 +308,7 @@ public final class DefaultWiredServices implements WiredServices {
         for (Bot bot : bots) {
             bot.setFigure(figure);
             bot.needsUpdate(true);
-            room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.users.RoomUsersComposer(bot).compose());
+            room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.users.UsersMessageComposer(bot).compose());
         }
     }
 

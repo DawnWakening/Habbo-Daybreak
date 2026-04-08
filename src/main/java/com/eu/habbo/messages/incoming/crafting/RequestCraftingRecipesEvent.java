@@ -4,7 +4,7 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.crafting.CraftingAltar;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.crafting.CraftableProductsComposer;
+import com.eu.habbo.messages.outgoing.crafting.CraftableProductsMessageComposer;
 
 public class RequestCraftingRecipesEvent extends MessageHandler {
     @Override
@@ -16,7 +16,7 @@ public class RequestCraftingRecipesEvent extends MessageHandler {
             CraftingAltar altar = Emulator.getGameEnvironment().getCraftingManager().getAltar(item.getBaseItem());
 
             if (altar != null) {
-                this.client.sendResponse(new CraftableProductsComposer(altar.getRecipesForHabbo(this.client.getHabbo()), altar.getIngredients()));
+                this.client.sendResponse(new CraftableProductsMessageComposer(altar.getRecipesForHabbo(this.client.getHabbo()), altar.getIngredients()));
             }
         }
     }

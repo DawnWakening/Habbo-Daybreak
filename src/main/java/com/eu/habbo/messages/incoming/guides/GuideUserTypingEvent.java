@@ -3,7 +3,7 @@ package com.eu.habbo.messages.incoming.guides;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.guides.GuideTour;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.guides.GuideSessionPartnerIsTypingComposer;
+import com.eu.habbo.messages.outgoing.guides.GuideSessionPartnerIsTypingMessageComposer;
 
 public class GuideUserTypingEvent extends MessageHandler {
     @Override
@@ -14,9 +14,9 @@ public class GuideUserTypingEvent extends MessageHandler {
 
         if (tour != null) {
             if (tour.getHelper() == this.client.getHabbo()) {
-                tour.getNoob().getClient().sendResponse(new GuideSessionPartnerIsTypingComposer(typing));
+                tour.getNoob().getClient().sendResponse(new GuideSessionPartnerIsTypingMessageComposer(typing));
             } else {
-                tour.getHelper().getClient().sendResponse(new GuideSessionPartnerIsTypingComposer(typing));
+                tour.getHelper().getClient().sendResponse(new GuideSessionPartnerIsTypingMessageComposer(typing));
             }
         }
     }

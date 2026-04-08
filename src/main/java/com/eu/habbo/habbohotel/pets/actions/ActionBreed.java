@@ -7,7 +7,7 @@ import com.eu.habbo.habbohotel.pets.PetTasks;
 import com.eu.habbo.habbohotel.pets.PetVocalsType;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.rooms.pets.breeding.PetBreedingStartFailedComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.breeding.GoToBreedingNestFailureMessageComposer;
 import org.apache.commons.lang3.StringUtils;
 
 public class ActionBreed extends PetAction {
@@ -33,7 +33,7 @@ public class ActionBreed extends PetAction {
 
             return true;
         } else {
-            habbo.getClient().sendResponse(new PetBreedingStartFailedComposer(PetBreedingStartFailedComposer.NO_NESTS));
+            habbo.getClient().sendResponse(new GoToBreedingNestFailureMessageComposer(GoToBreedingNestFailureMessageComposer.NO_NESTS));
         }
 
         return false;

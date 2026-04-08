@@ -5,7 +5,7 @@ import com.eu.habbo.habbohotel.catalog.ClubOffer;
 import com.eu.habbo.habbohotel.users.subscriptions.Subscription;
 import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionHabboClub;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.unknown.ExtendClubMessageComposer;
+import com.eu.habbo.messages.outgoing.unknown.HabboClubExtendOfferMessageComposer;
 
 public class CatalogRequestClubDiscountEvent extends MessageHandler {
 
@@ -34,7 +34,7 @@ public class CatalogRequestClubDiscountEvent extends MessageHandler {
             if(deal != null) {
                 ClubOffer regular = Emulator.getGameEnvironment().getCatalogManager().getClubOffers().stream().filter(x -> x.getDays() == deal.getDays()).findAny().orElse(null);
                 if(regular != null) {
-                    this.client.sendResponse(new ExtendClubMessageComposer(this.client.getHabbo(), deal, regular.getCredits(), regular.getPoints(), regular.getPointsType(), Math.max(0, days)));
+                    this.client.sendResponse(new HabboClubExtendOfferMessageComposer(this.client.getHabbo(), deal, regular.getCredits(), regular.getPoints(), regular.getPointsType(), Math.max(0, days)));
                 }
             }
         }

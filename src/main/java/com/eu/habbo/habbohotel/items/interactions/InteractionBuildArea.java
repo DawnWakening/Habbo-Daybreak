@@ -10,8 +10,8 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.users.HabboManager;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RoomFloorItemsComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectsMessageComposer;
 import gnu.trove.TCollections;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.THashMap;
@@ -238,10 +238,10 @@ public class InteractionBuildArea extends InteractionCustomValues {
                 items.add(item);
             }
 
-            client.sendResponse(new RoomFloorItemsComposer(ownerNames, items));
+            client.sendResponse(new ObjectsMessageComposer(ownerNames, items));
             Emulator.getThreading().run(() -> {
                 for(HabboItem item : items) {
-                    client.sendResponse(new RemoveFloorItemComposer(item, true));
+                    client.sendResponse(new ObjectRemoveMessageComposer(item, true));
                 }
             }, 3000);
         }

@@ -7,9 +7,9 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboBadge;
 import com.eu.habbo.habbohotel.users.inventory.BadgesComponent;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.users.AddUserBadgeComposer;
+import com.eu.habbo.messages.outgoing.users.BadgeReceivedMessageComposer;
 import gnu.trove.map.hash.THashMap;
 
 public class RoomBadgeCommand extends Command {
@@ -32,14 +32,14 @@ public class RoomBadgeCommand extends Command {
                 keys.put("display", "BUBBLE");
                 keys.put("image", "${image.library.url}album1584/" + badge + ".gif");
                 keys.put("message", Emulator.getTexts().getValue("commands.generic.cmd_badge.received"));
-                ServerMessage message = new BubbleAlertComposer(BubbleAlertKeys.RECEIVED_BADGE.key, keys).compose();
+                ServerMessage message = new NotificationDialogMessageComposer(BubbleAlertKeys.RECEIVED_BADGE.key, keys).compose();
 
                 for (Habbo habbo : gameClient.getHabbo().getRoomUnit().getRoom().getHabbos()) {
                     if (habbo.isOnline()) {
                         if (habbo.getInventory() != null && habbo.getInventory().getBadgesComponent() != null && !habbo.getInventory().getBadgesComponent().hasBadge(badge)) {
                             HabboBadge b = BadgesComponent.createBadge(badge, habbo);
 
-                            habbo.getClient().sendResponse(new AddUserBadgeComposer(b));
+                            habbo.getClient().sendResponse(new BadgeReceivedMessageComposer(b));
                             habbo.getClient().sendResponse(message);
                         }
                     }

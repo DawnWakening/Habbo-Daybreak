@@ -11,7 +11,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.outgoing.MessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.FloorItemOnRollerComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUnitOnRollerComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.SlideObjectBundleMessageComposer;
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurnitureRolledEvent;
 import com.eu.habbo.plugin.events.users.UserRolledEvent;
@@ -289,7 +289,7 @@ public class RoomRollerManager {
                         updatedUnit.remove(ridingUnit);
                         
                         // Compose and send pet roller message first
-                        RoomUnitOnRollerComposer petRollerComposer = new RoomUnitOnRollerComposer(
+                        SlideObjectBundleMessageComposer petRollerComposer = new SlideObjectBundleMessageComposer(
                             ridingUnit, roller, ridingUnit.getCurrentLocation(), petOldZ, 
                             tileInFront, petNewZ, this.room);
                         messages.add(petRollerComposer);
@@ -308,7 +308,7 @@ public class RoomRollerManager {
             // For riding users, use pet-relative Z values
             double riderOldZ = isRiding ? unit.getZ() : unit.getZ();
             double riderNewZ = isRiding ? newZ : (unit.getZ() + zOffset);
-            messages.add(new RoomUnitOnRollerComposer(unit, roller, unit.getCurrentLocation(),
+            messages.add(new SlideObjectBundleMessageComposer(unit, roller, unit.getCurrentLocation(),
                 riderOldZ, tileInFront, riderNewZ, this.room));
 
             if (itemsOnRoller.isEmpty()) {

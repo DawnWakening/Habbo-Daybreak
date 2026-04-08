@@ -8,8 +8,8 @@ import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.generic.alerts.UpdateFailedComposer;
-import com.eu.habbo.messages.outgoing.wired.WiredSavedComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.WiredValidationErrorMessageComposer;
+import com.eu.habbo.messages.outgoing.wired.WiredSavedMessageComposer;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -35,7 +35,7 @@ public class WiredTriggerSaveDataEvent extends MessageHandler {
                             WiredSettings settings = InteractionWired.readSettings(this.packet, false);
 
                             if (trigger.saveData(settings)) {
-                                this.client.sendResponse(new WiredSavedComposer());
+                                this.client.sendResponse(new WiredSavedMessageComposer());
 
                                 trigger.needsUpdate(true);
 
@@ -44,23 +44,23 @@ public class WiredTriggerSaveDataEvent extends MessageHandler {
                                 // Invalidate wired cache when trigger is saved
                                 WiredManager.invalidateRoom(room);
                             } else {
-                                this.client.sendResponse(new UpdateFailedComposer("There was an error while saving that trigger"));
+                                this.client.sendResponse(new WiredValidationErrorMessageComposer("There was an error while saving that trigger"));
                             }
                         } else {
                             if ((boolean) saveMethod.get().invoke(trigger, this.packet)) {
-                                this.client.sendResponse(new WiredSavedComposer());
+                                this.client.sendResponse(new WiredSavedMessageComposer());
                                 trigger.needsUpdate(true);
                                 Emulator.getThreading().run(trigger);
                                 
                                 // Invalidate wired cache when trigger is saved
                                 WiredManager.invalidateRoom(room);
                             } else {
-                                this.client.sendResponse(new UpdateFailedComposer("There was an error while saving that trigger"));
+                                this.client.sendResponse(new WiredValidationErrorMessageComposer("There was an error while saving that trigger"));
                             }
                         }
                     }
                     else {
-                        this.client.sendResponse(new UpdateFailedComposer("Save method was not found"));
+                        this.client.sendResponse(new WiredValidationErrorMessageComposer("Save method was not found"));
                     }
                 }
             }

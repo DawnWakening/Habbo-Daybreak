@@ -7,7 +7,7 @@ import com.eu.habbo.habbohotel.modtool.ModToolIssue;
 import com.eu.habbo.habbohotel.modtool.ModToolTicketType;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.outgoing.guardians.*;
-import com.eu.habbo.messages.outgoing.guides.BullyReportClosedComposer;
+import com.eu.habbo.messages.outgoing.guides.GuideTicketResolutionMessageComposer;
 import com.eu.habbo.threading.runnables.GuardianNotAccepted;
 import com.eu.habbo.threading.runnables.GuardianVotingFinish;
 import gnu.trove.map.hash.THashMap;
@@ -41,7 +41,7 @@ public class GuardianTicket {
 
 
     public void requestToVote(Habbo guardian) {
-        guardian.getClient().sendResponse(new GuardianNewReportReceivedComposer());
+        guardian.getClient().sendResponse(new ChatReviewSessionOfferedToGuideMessageComposer());
 
         this.votes.put(guardian, new GuardianVote(this.guardianCount, guardian));
         this.guardianCount++;
@@ -54,7 +54,7 @@ public class GuardianTicket {
         GuardianVote vote = this.votes.get(guardian);
 
         if (vote != null && vote.type == GuardianVoteType.SEARCHING) {
-            guardian.getClient().sendResponse(new GuardianVotingRequestedComposer(this));
+            guardian.getClient().sendResponse(new ChatReviewSessionStartedMessageComposer(this));
             vote.type = GuardianVoteType.WAITING;
             this.updateVotes();
         }
@@ -73,7 +73,7 @@ public class GuardianTicket {
 
         this.getVoteForGuardian(guardian).ignore = true;
 
-        guardian.getClient().sendResponse(new GuardianVotingTimeEnded());
+        guardian.getClient().sendResponse(new ChatReviewSessionDetachedMessageComposer());
 
         this.updateVotes();
     }
@@ -96,7 +96,7 @@ public class GuardianTicket {
                 if (set.getValue().type == GuardianVoteType.WAITING || set.getValue().type == GuardianVoteType.NOT_VOTED || set.getValue().ignore || set.getValue().type == GuardianVoteType.SEARCHING)
                     continue;
 
-                set.getKey().getClient().sendResponse(new GuardianVotingVotesComposer(this, set.getKey()));
+                set.getKey().getClient().sendResponse(new ChatReviewSessionVotingStatusMessageComposer(this, set.getKey()));
             }
         }
     }
@@ -121,7 +121,7 @@ public class GuardianTicket {
                 Emulator.getGameEnvironment().getModToolManager().addTicket(issue);
                 Emulator.getGameEnvironment().getModToolManager().updateTicketToMods(issue);
 
-                this.reporter.getClient().sendResponse(new BullyReportClosedComposer(BullyReportClosedComposer.CLOSED));
+                this.reporter.getClient().sendResponse(new GuideTicketResolutionMessageComposer(GuideTicketResolutionMessageComposer.CLOSED));
             } else {
                 this.timeLeft = 30;
                 Emulator.getThreading().run(new GuardianVotingFinish(this), 10000);
@@ -136,16 +136,16 @@ public class GuardianTicket {
                 if (set.getValue().type == GuardianVoteType.ACCEPTABLY ||
                         set.getValue().type == GuardianVoteType.BADLY ||
                         set.getValue().type == GuardianVoteType.AWFULLY) {
-                    set.getKey().getClient().sendResponse(new GuardianVotingResultComposer(this, set.getValue()));
+                    set.getKey().getClient().sendResponse(new ChatReviewSessionResultsMessageComposer(this, set.getValue()));
                 }
             }
 
             Emulator.getGameEnvironment().getGuideManager().closeTicket(this);
 
             if (this.verdict == GuardianVoteType.ACCEPTABLY)
-                this.reporter.getClient().sendResponse(new BullyReportClosedComposer(BullyReportClosedComposer.MISUSE));
+                this.reporter.getClient().sendResponse(new GuideTicketResolutionMessageComposer(GuideTicketResolutionMessageComposer.MISUSE));
             else
-                this.reporter.getClient().sendResponse(new BullyReportClosedComposer(BullyReportClosedComposer.CLOSED));
+                this.reporter.getClient().sendResponse(new GuideTicketResolutionMessageComposer(GuideTicketResolutionMessageComposer.CLOSED));
         }
     }
 

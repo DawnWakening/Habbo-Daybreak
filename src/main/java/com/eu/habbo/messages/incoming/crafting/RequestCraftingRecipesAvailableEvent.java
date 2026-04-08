@@ -39,8 +39,8 @@ public class RequestCraftingRecipesAvailableEvent extends MessageHandler {
             CraftingRecipe equalsRecipe = altar.getRecipe(items);
             if (equalsRecipe != null && this.client.getHabbo().getHabboStats().hasRecipe(equalsRecipe.getId())) {
                 //this.client.sendResponse(new CraftingRecipesAvailableComposer(-1, true));
-                //this.client.sendResponse(new CraftingRecipeComposer(equalsRecipe));
-                //this.client.sendResponse(new CraftingResultComposer(equalsRecipe, true));
+                //this.client.sendResponse(new CraftingRecipeMessageComposer(equalsRecipe));
+                //this.client.sendResponse(new CraftingResultMessageComposer(equalsRecipe, true));
                 return;
             }
             Map<CraftingRecipe, Boolean> recipes = altar.matchRecipes(items);

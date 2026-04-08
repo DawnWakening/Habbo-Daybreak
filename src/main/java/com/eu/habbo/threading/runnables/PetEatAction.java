@@ -8,8 +8,8 @@ import com.eu.habbo.habbohotel.pets.Pet;
 import com.eu.habbo.habbohotel.pets.PetTasks;
 import com.eu.habbo.habbohotel.pets.PetVocalsType;
 import com.eu.habbo.habbohotel.rooms.RoomUnitStatus;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 
 public class PetEatAction implements Runnable {
     private final Pet pet;
@@ -64,14 +64,14 @@ public class PetEatAction implements Runnable {
                     Emulator.getThreading().run(new QueryDeleteHabboItem(this.food.getId()), 250);
                     if (this.pet.getRoom() != null) {
                         this.pet.getRoom().removeHabboItem(this.food);
-                        this.pet.getRoom().sendComposer(new RemoveFloorItemComposer(this.food, true).compose());
+                        this.pet.getRoom().sendComposer(new ObjectRemoveMessageComposer(this.food, true).compose());
                     }
                 }
 
                 this.pet.setTask(PetTasks.FREE);
                 this.pet.getRoomUnit().removeStatus(RoomUnitStatus.EAT);
                 this.pet.getRoomUnit().setCanWalk(true);
-                this.pet.getRoom().sendComposer(new RoomUserStatusComposer(this.pet.getRoomUnit()).compose());
+                this.pet.getRoom().sendComposer(new UserUpdateMessageComposer(this.pet.getRoomUnit()).compose());
             }
         }
     }

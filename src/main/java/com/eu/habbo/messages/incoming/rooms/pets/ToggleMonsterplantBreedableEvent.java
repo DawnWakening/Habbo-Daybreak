@@ -5,7 +5,7 @@ import com.eu.habbo.habbohotel.pets.MonsterplantPet;
 import com.eu.habbo.habbohotel.pets.Pet;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.pets.PetStatusUpdateComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.PetStatusUpdateMessageComposer;
 
 public class ToggleMonsterplantBreedableEvent extends MessageHandler {
     @Override
@@ -32,7 +32,7 @@ public class ToggleMonsterplantBreedableEvent extends MessageHandler {
                         Emulator.getThreading().run(monsterplant);
                         
                         // Send status update to room
-                        room.sendComposer(new PetStatusUpdateComposer(monsterplant).compose());
+                        room.sendComposer(new PetStatusUpdateMessageComposer(monsterplant).compose());
                     }
                 }
             }

@@ -5,8 +5,8 @@ import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
 import com.eu.habbo.plugin.events.furniture.FurnitureRedeemedEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 import org.slf4j.Logger;
@@ -96,11 +96,11 @@ public class RedeemItemEvent extends MessageHandler {
                         return;
 
                     room.removeHabboItem(item);
-                    room.sendComposer(new RemoveFloorItemComposer(item).compose());
+                    room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
                     RoomTile t = room.getLayout().getTile(item.getX(), item.getY());
                     t.setStackHeight(room.getStackHeight(item.getX(), item.getY(), false));
                     room.updateTile(t);
-                    room.sendComposer(new UpdateStackHeightComposer(item.getX(), item.getY(), t.z, t.relativeHeight()).compose());
+                    room.sendComposer(new HeightMapUpdateMessageComposer(item.getX(), item.getY(), t.z, t.relativeHeight()).compose());
                     Emulator.getThreading().run(new QueryDeleteHabboItem(item.getId()));
 
                     switch (furniRedeemEvent.currencyID) {

@@ -4,12 +4,12 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.guilds.Guild;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.rooms.RoomAddRightsListComposer;
-import com.eu.habbo.messages.outgoing.rooms.RoomOwnerComposer;
-import com.eu.habbo.messages.outgoing.rooms.RoomRemoveRightsListComposer;
-import com.eu.habbo.messages.outgoing.rooms.RoomRightsComposer;
-import com.eu.habbo.messages.outgoing.rooms.RoomRightsListComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserUnbannedComposer;
+import com.eu.habbo.messages.outgoing.rooms.FlatControllerAddedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.YouAreOwnerMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.FlatControllerRemovedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.YouAreControllerMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.FlatControllersMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUnbannedFromRoomMessageComposer;
 import com.eu.habbo.habbohotel.messenger.MessengerBuddy;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.plugin.events.users.UserRightsTakenEvent;
@@ -165,7 +165,7 @@ public class RoomRightsManager {
         if (habbo != null) {
             this.refreshRightsForHabbo(habbo);
 
-            this.room.sendComposer(new RoomAddRightsListComposer(this.room, habbo.getHabboInfo().getId(),
+            this.room.sendComposer(new FlatControllerAddedMessageComposer(this.room, habbo.getHabboInfo().getId(),
                 habbo.getHabboInfo().getUsername()).compose());
         } else {
             Habbo owner = Emulator.getGameEnvironment().getHabboManager().getHabbo(this.room.getOwnerId());
@@ -175,7 +175,7 @@ public class RoomRightsManager {
 
                 if (buddy != null) {
                     this.room.sendComposer(
-                        new RoomAddRightsListComposer(this.room, userId, buddy.getUsername()).compose());
+                        new FlatControllerAddedMessageComposer(this.room, userId, buddy.getUsername()).compose());
                 }
             }
         }
@@ -193,7 +193,7 @@ public class RoomRightsManager {
             return;
         }
 
-        this.room.sendComposer(new RoomRemoveRightsListComposer(this.room, userId).compose());
+        this.room.sendComposer(new FlatControllerRemovedMessageComposer(this.room, userId).compose());
 
         if (this.rights.remove(userId)) {
             try (Connection connection = Emulator.getDatabase().getDataSource()
@@ -264,10 +264,10 @@ public class RoomRightsManager {
         }
 
         if (habbo.hasPermission(Permission.ACC_ANYROOMOWNER)) {
-            habbo.getClient().sendResponse(new RoomOwnerComposer());
+            habbo.getClient().sendResponse(new YouAreOwnerMessageComposer());
             flatCtrl = RoomRightLevels.MODERATOR;
         } else if (this.isOwner(habbo)) {
-            habbo.getClient().sendResponse(new RoomOwnerComposer());
+            habbo.getClient().sendResponse(new YouAreOwnerMessageComposer());
             flatCtrl = RoomRightLevels.MODERATOR;
         } else if (this.hasRights(habbo) && !this.room.hasGuild()) {
             flatCtrl = RoomRightLevels.RIGHTS;
@@ -275,13 +275,13 @@ public class RoomRightsManager {
             flatCtrl = this.getGuildRightLevel(habbo);
         }
 
-        habbo.getClient().sendResponse(new RoomRightsComposer(flatCtrl));
+        habbo.getClient().sendResponse(new YouAreControllerMessageComposer(flatCtrl));
         habbo.getRoomUnit().setStatus(RoomUnitStatus.FLAT_CONTROL, flatCtrl.level + "");
         habbo.getRoomUnit().setRightsLevel(flatCtrl);
         habbo.getRoomUnit().statusUpdate(true);
 
         if (flatCtrl.equals(RoomRightLevels.MODERATOR)) {
-            habbo.getClient().sendResponse(new RoomRightsListComposer(this.room));
+            habbo.getClient().sendResponse(new FlatControllersMessageComposer(this.room));
         }
     }
 
@@ -319,7 +319,7 @@ public class RoomRightsManager {
             ban.delete();
         }
 
-        this.room.sendComposer(new RoomUserUnbannedComposer(this.room, userId).compose());
+        this.room.sendComposer(new UserUnbannedFromRoomMessageComposer(this.room, userId).compose());
     }
 
     /**

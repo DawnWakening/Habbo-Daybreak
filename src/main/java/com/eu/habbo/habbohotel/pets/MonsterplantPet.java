@@ -7,11 +7,11 @@ import com.eu.habbo.habbohotel.rooms.RoomUnitStatus;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.inventory.AddHabboItemComposer;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
-import com.eu.habbo.messages.outgoing.rooms.pets.PetStatusUpdateComposer;
-import com.eu.habbo.messages.outgoing.rooms.pets.RoomPetRespectComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.PetStatusUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.PetRespectNotificationMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -330,14 +330,14 @@ public class MonsterplantPet extends Pet implements IPetLook {
             Emulator.getThreading().run(this);
             Emulator.getThreading().run(pet);
             
-            this.room.sendComposer(new PetStatusUpdateComposer(pet).compose());
-            this.room.sendComposer(new PetStatusUpdateComposer(this).compose());
+            this.room.sendComposer(new PetStatusUpdateMessageComposer(pet).compose());
+            this.room.sendComposer(new PetStatusUpdateMessageComposer(this).compose());
 
             this.getRoomUnit().setStatus(RoomUnitStatus.GESTURE, "reb");
             pet.getRoomUnit().setStatus(RoomUnitStatus.GESTURE, "reb");
 
-            this.room.sendComposer(new RoomUserStatusComposer(this.getRoomUnit()).compose());
-            this.room.sendComposer(new RoomUserStatusComposer(pet.getRoomUnit()).compose());
+            this.room.sendComposer(new UserUpdateMessageComposer(this.getRoomUnit()).compose());
+            this.room.sendComposer(new UserUpdateMessageComposer(pet.getRoomUnit()).compose());
 
             this.getRoomUnit().removeStatus(RoomUnitStatus.GESTURE);
             pet.getRoomUnit().removeStatus(RoomUnitStatus.GESTURE);
@@ -363,16 +363,16 @@ public class MonsterplantPet extends Pet implements IPetLook {
                     AchievementManager.progressAchievement(ownerOne, Emulator.getGameEnvironment().getAchievementManager().getAchievement("MonsterPlantBreeder"), 5);
                     seed = Emulator.getGameEnvironment().getItemManager().createItem(ownerOne.getHabboInfo().getId(), seedBase, 0, 0, "");
                     ownerOne.getInventory().getItemsComponent().addItem(seed);
-                    ownerOne.getClient().sendResponse(new AddHabboItemComposer(seed));
-                    ownerOne.getClient().sendResponse(new InventoryRefreshComposer());
+                    ownerOne.getClient().sendResponse(new UnseenItemsMessageComposer(seed));
+                    ownerOne.getClient().sendResponse(new FurniListInvalidateMessageComposer());
                 }
 
                 if (ownerTwo != null) {
                     AchievementManager.progressAchievement(ownerTwo, Emulator.getGameEnvironment().getAchievementManager().getAchievement("MonsterPlantBreeder"), 5);
                     seed = Emulator.getGameEnvironment().getItemManager().createItem(ownerTwo.getHabboInfo().getId(), seedBase, 0, 0, "");
                     ownerTwo.getInventory().getItemsComponent().addItem(seed);
-                    ownerTwo.getClient().sendResponse(new AddHabboItemComposer(seed));
-                    ownerTwo.getClient().sendResponse(new InventoryRefreshComposer());
+                    ownerTwo.getClient().sendResponse(new UnseenItemsMessageComposer(seed));
+                    ownerTwo.getClient().sendResponse(new FurniListInvalidateMessageComposer());
                 }
             }
         }
@@ -414,8 +414,8 @@ public class MonsterplantPet extends Pet implements IPetLook {
             this.addExperience(10);
             // needsUpdate is set by setDeathTimestamp, persist to database
             Emulator.getThreading().run(this);
-            this.room.sendComposer(new PetStatusUpdateComposer(this).compose());
-            this.room.sendComposer(new RoomPetRespectComposer(this, RoomPetRespectComposer.PET_TREATED).compose());
+            this.room.sendComposer(new PetStatusUpdateMessageComposer(this).compose());
+            this.room.sendComposer(new PetRespectNotificationMessageComposer(this, PetRespectNotificationMessageComposer.PET_TREATED).compose());
         }
     }
 

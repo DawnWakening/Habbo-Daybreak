@@ -6,7 +6,7 @@ import com.eu.habbo.habbohotel.modtool.ModToolTicketState;
 import com.eu.habbo.habbohotel.modtool.ScripterManager;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.modtool.ModToolIssueInfoComposer;
+import com.eu.habbo.messages.outgoing.modtool.IssueInfoMessageComposer;
 
 public class ModToolPickTicketEvent extends MessageHandler {
     public static boolean send = false;
@@ -19,13 +19,13 @@ public class ModToolPickTicketEvent extends MessageHandler {
 
             if (issue != null) {
                 if (issue.state == ModToolTicketState.PICKED) {
-                    this.client.sendResponse(new ModToolIssueInfoComposer(issue));
+                    this.client.sendResponse(new IssueInfoMessageComposer(issue));
                     this.client.getHabbo().alert(Emulator.getTexts().getValue("support.ticket.picked.failed"));
 
                     return;
                 }
 
-                //this.client.sendResponse(new ModToolIssueInfoComposer(issue));
+                //this.client.sendResponse(new IssueInfoMessageComposer(issue));
                 Emulator.getGameEnvironment().getModToolManager().pickTicket(issue, this.client.getHabbo());
             } else {
                 this.client.getHabbo().alert(Emulator.getTexts().getValue("support.ticket.picked.failed"));

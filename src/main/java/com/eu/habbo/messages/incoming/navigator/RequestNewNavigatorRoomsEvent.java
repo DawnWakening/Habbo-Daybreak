@@ -6,7 +6,7 @@ import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomCategory;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.navigator.NewNavigatorSearchResultsComposer;
+import com.eu.habbo.messages.outgoing.navigator.NavigatorSearchResultBlocksMessageComposer;
 import gnu.trove.map.hash.THashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +33,7 @@ public class RequestNewNavigatorRoomsEvent extends MessageHandler {
             if (rooms != null) {
                 List<SearchResultList> resultLists = new ArrayList<>();
                 resultLists.add(new SearchResultList(0, view, query, SearchAction.NONE, this.client.getHabbo().getHabboStats().navigatorWindowSettings.getListModeForCategory(view, ListMode.LIST), this.client.getHabbo().getHabboStats().navigatorWindowSettings.getDisplayModeForCategory(view, DisplayMode.VISIBLE), rooms, true, true, DisplayOrder.ACTIVITY, -1));
-                this.client.sendResponse(new NewNavigatorSearchResultsComposer(view, query, resultLists));
+                this.client.sendResponse(new NavigatorSearchResultBlocksMessageComposer(view, query, resultLists));
                 return;
             }
         }
@@ -72,7 +72,7 @@ public class RequestNewNavigatorRoomsEvent extends MessageHandler {
                 resultLists = toQueryResults(resultLists);
             }
 
-            this.client.sendResponse(new NewNavigatorSearchResultsComposer(view, query, resultLists));
+            this.client.sendResponse(new NavigatorSearchResultBlocksMessageComposer(view, query, resultLists));
             return;
         }
 
@@ -97,7 +97,7 @@ public class RequestNewNavigatorRoomsEvent extends MessageHandler {
             }
             filter.filter(field.field, part, resultLists);
             resultLists = toQueryResults(resultLists);
-            this.client.sendResponse(new NewNavigatorSearchResultsComposer(view, query, resultLists));
+            this.client.sendResponse(new NavigatorSearchResultBlocksMessageComposer(view, query, resultLists));
         } catch (Exception e) {
             LOGGER.error("Caught exception", e);
         }
@@ -110,7 +110,7 @@ public class RequestNewNavigatorRoomsEvent extends MessageHandler {
             filter.filter(field.field, part, resultLists);
 
             Collections.sort(resultLists);
-            this.client.sendResponse(new NewNavigatorSearchResultsComposer(view, query, resultLists));
+            this.client.sendResponse(new NavigatorSearchResultBlocksMessageComposer(view, query, resultLists));
         }
         catch (Exception e)
         {

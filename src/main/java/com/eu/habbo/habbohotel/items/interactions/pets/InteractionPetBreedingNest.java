@@ -14,8 +14,8 @@ import com.eu.habbo.habbohotel.rooms.RoomUnitType;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.rooms.pets.PetPackageNameValidationComposer;
-import com.eu.habbo.messages.outgoing.rooms.pets.breeding.PetBreedingCompleted;
+import com.eu.habbo.messages.outgoing.rooms.pets.OpenPetPackageResultMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.breeding.NestBreedingSuccessMessageComposer;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 
 import java.sql.ResultSet;
@@ -141,12 +141,12 @@ public class InteractionPetBreedingNest extends HabboItem {
         habbo.getHabboInfo().getCurrentRoom().updateItem(this);
 
         if (this.petOne != null) {
-            habbo.getClient().sendResponse(new PetPackageNameValidationComposer(this.getId(), PetPackageNameValidationComposer.CLOSE_WIDGET, ""));
+            habbo.getClient().sendResponse(new OpenPetPackageResultMessageComposer(this.getId(), OpenPetPackageResultMessageComposer.CLOSE_WIDGET, ""));
         }
         if (this.petTwo != null && this.petTwo.getUserId() != habbo.getHabboInfo().getId()) {
             Habbo owner = this.petTwo.getRoom() != null ? this.petTwo.getRoom().getHabbo(this.petTwo.getUserId()) : null;
             if (owner != null && owner.getClient() != null) {
-                owner.getClient().sendResponse(new PetPackageNameValidationComposer(this.getId(), PetPackageNameValidationComposer.CLOSE_WIDGET, ""));
+                owner.getClient().sendResponse(new OpenPetPackageResultMessageComposer(this.getId(), OpenPetPackageResultMessageComposer.CLOSE_WIDGET, ""));
             }
         }
 
@@ -204,13 +204,13 @@ public class InteractionPetBreedingNest extends HabboItem {
         Emulator.getThreading().run(() -> {
             Pet offspring = Emulator.getGameEnvironment().getPetManager().createPet(petOne.getPetData().getOffspringType(), (int) Math.min(Math.round(Math.max(1d, PetManager.getNormalDistributionForBreeding(petOne.getLevel(), petTwo.getLevel()).sample())), 20), name, habbo.getClient());
 
-            //habbo.getClient().sendResponse(new PetPackageNameValidationComposer(box.getId(), PetPackageNameValidationComposer.CLOSE_WIDGET, ""));
+            //habbo.getClient().sendResponse(new OpenPetPackageResultMessageComposer(box.getId(), OpenPetPackageResultMessageComposer.CLOSE_WIDGET, ""));
             habbo.getHabboInfo().getCurrentRoom().placePet(offspring, box.getX(), box.getY(), box.getZ(), box.getRotation());
             offspring.needsUpdate = true;
             offspring.run();
             InteractionPetBreedingNest.this.freePets();
             habbo.getHabboInfo().getCurrentRoom().removeHabboItem(box);
-            habbo.getClient().sendResponse(new PetBreedingCompleted(offspring.getId(), Emulator.getGameEnvironment().getPetManager().getRarityForOffspring(offspring)));
+            habbo.getClient().sendResponse(new NestBreedingSuccessMessageComposer(offspring.getId(), Emulator.getGameEnvironment().getPetManager().getRarityForOffspring(offspring)));
 
             if (box.getBaseItem().getName().startsWith("pet_breeding_")) {
                 String boxType = box.getBaseItem().getName().replace("pet_breeding_", "");

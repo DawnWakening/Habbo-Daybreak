@@ -6,9 +6,9 @@ import com.eu.habbo.habbohotel.modtool.ModToolIssue;
 import com.eu.habbo.habbohotel.modtool.ModToolTicketType;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.guides.GuideSessionDetachedComposer;
-import com.eu.habbo.messages.outgoing.guides.GuideSessionEndedComposer;
-import com.eu.habbo.messages.outgoing.modtool.ModToolReportReceivedAlertComposer;
+import com.eu.habbo.messages.outgoing.guides.GuideSessionDetachedMessageComposer;
+import com.eu.habbo.messages.outgoing.guides.GuideSessionEndedMessageComposer;
+import com.eu.habbo.messages.outgoing.modtool.CallForHelpResultMessageComposer;
 
 public class GuideReportHelperEvent extends MessageHandler {
     @Override
@@ -35,13 +35,13 @@ public class GuideReportHelperEvent extends MessageHandler {
 
             Emulator.getGameEnvironment().getModToolManager().addTicket(issue);
             Emulator.getGameEnvironment().getModToolManager().updateTicketToMods(issue);
-            this.client.sendResponse(new ModToolReportReceivedAlertComposer(ModToolReportReceivedAlertComposer.REPORT_RECEIVED, message));
+            this.client.sendResponse(new CallForHelpResultMessageComposer(CallForHelpResultMessageComposer.REPORT_RECEIVED, message));
 
-            this.client.sendResponse(new GuideSessionDetachedComposer());
-            this.client.sendResponse(new GuideSessionEndedComposer(GuideSessionEndedComposer.HELP_CASE_CLOSED));
+            this.client.sendResponse(new GuideSessionDetachedMessageComposer());
+            this.client.sendResponse(new GuideSessionEndedMessageComposer(GuideSessionEndedMessageComposer.HELP_CASE_CLOSED));
 
-            reported.getClient().sendResponse(new GuideSessionDetachedComposer());
-            reported.getClient().sendResponse(new GuideSessionEndedComposer(GuideSessionEndedComposer.HELP_CASE_CLOSED));
+            reported.getClient().sendResponse(new GuideSessionDetachedMessageComposer());
+            reported.getClient().sendResponse(new GuideSessionEndedMessageComposer(GuideSessionEndedMessageComposer.HELP_CASE_CLOSED));
         }
     }
 }

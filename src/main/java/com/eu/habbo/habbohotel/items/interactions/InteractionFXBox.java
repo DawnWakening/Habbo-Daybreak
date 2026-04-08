@@ -6,7 +6,7 @@ import com.eu.habbo.habbohotel.items.Item;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.HabboGender;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 
 import java.sql.ResultSet;
@@ -58,7 +58,7 @@ public class InteractionFXBox extends InteractionDefault {
             HabboItem item = this;
             Emulator.getThreading().run(() -> {
                 new QueryDeleteHabboItem(item.getId()).run();
-                room.sendComposer(new RemoveFloorItemComposer(item).compose());
+                room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
                 room.updateTile(room.getLayout().getTile(this.getX(), this.getY()));
             }, 500);
         }

@@ -1,11 +1,11 @@
 package com.eu.habbo.messages.incoming.inventory;
 
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.inventory.InventoryPetsComposer;
+import com.eu.habbo.messages.outgoing.inventory.PetInventoryMessageComposer;
 
 public class RequestInventoryPetsEvent extends MessageHandler {
     @Override
     public void handle() throws Exception {
-        this.client.sendResponse(new InventoryPetsComposer(this.client.getHabbo()));
+        this.client.sendResponse(new PetInventoryMessageComposer(this.client.getHabbo()));
     }
 }

@@ -6,8 +6,8 @@ import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.inventory.InventoryBotsComposer;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
+import com.eu.habbo.messages.outgoing.inventory.BotInventoryMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 public class EmptyBotsInventoryCommand extends Command {
@@ -42,8 +42,8 @@ public class EmptyBotsInventoryCommand extends Command {
                     return true;
                 });
 
-                habbo.getClient().sendResponse(new InventoryRefreshComposer());
-                habbo.getClient().sendResponse(new InventoryBotsComposer(habbo));
+                habbo.getClient().sendResponse(new FurniListInvalidateMessageComposer());
+                habbo.getClient().sendResponse(new BotInventoryMessageComposer(habbo));
 
                 gameClient.getHabbo().whisper(Emulator.getTexts().getValue("commands.succes.cmd_empty_bots.cleared").replace("%username%", habbo.getHabboInfo().getUsername()), RoomChatMessageBubbles.ALERT);
             } else {

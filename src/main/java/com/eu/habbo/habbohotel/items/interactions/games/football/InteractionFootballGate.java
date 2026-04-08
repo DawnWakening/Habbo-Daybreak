@@ -9,8 +9,8 @@ import com.eu.habbo.habbohotel.users.HabboGender;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.users.clothingvalidation.ClothingValidationManager;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDataComposer;
-import com.eu.habbo.messages.outgoing.users.UpdateUserLookComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserChangeMessageComposer;
+import com.eu.habbo.messages.outgoing.users.FigureUpdateMessageComposer;
 import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
 import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
@@ -66,9 +66,9 @@ public class InteractionFootballGate extends HabboItem {
         if (habbo.getHabboStats().cache.containsKey(CACHE_KEY)) {
             habbo.getHabboInfo().setLook((String) habbo.getHabboStats().cache.get(CACHE_KEY));
             habbo.getHabboStats().cache.remove(CACHE_KEY);
-            habbo.getClient().sendResponse(new UpdateUserLookComposer(habbo));
+            habbo.getClient().sendResponse(new FigureUpdateMessageComposer(habbo));
             if (habbo.getHabboInfo().getCurrentRoom() != null) {
-                habbo.getHabboInfo().getCurrentRoom().sendComposer(new RoomUserDataComposer(habbo).compose());
+                habbo.getHabboInfo().getCurrentRoom().sendComposer(new UserChangeMessageComposer(habbo).compose());
             }
         }
     }
@@ -123,8 +123,8 @@ public class InteractionFootballGate extends HabboItem {
                 if (!lookEvent.isCancelled()) {
                     habbo.getHabboInfo().setLook(ClothingValidationManager.VALIDATE_ON_FBALLGATE ? ClothingValidationManager.validateLook(habbo, lookEvent.newLook, lookEvent.gender.name()) : lookEvent.newLook);
                     Emulator.getThreading().run(habbo.getHabboInfo());
-                    habbo.getClient().sendResponse(new UpdateUserLookComposer(habbo));
-                    room.sendComposer(new RoomUserDataComposer(habbo).compose());
+                    habbo.getClient().sendResponse(new FigureUpdateMessageComposer(habbo));
+                    room.sendComposer(new UserChangeMessageComposer(habbo).compose());
                 }
 
                 habbo.getHabboStats().cache.remove(CACHE_KEY);
@@ -137,8 +137,8 @@ public class InteractionFootballGate extends HabboItem {
                     habbo.getHabboStats().cache.put(CACHE_KEY, habbo.getHabboInfo().getLook());
                     habbo.getHabboInfo().setLook(ClothingValidationManager.VALIDATE_ON_FBALLGATE ? ClothingValidationManager.validateLook(habbo, lookEvent.newLook, lookEvent.gender.name()) : lookEvent.newLook);
                     Emulator.getThreading().run(habbo.getHabboInfo());
-                    habbo.getClient().sendResponse(new UpdateUserLookComposer(habbo));
-                    room.sendComposer(new RoomUserDataComposer(habbo).compose());
+                    habbo.getClient().sendResponse(new FigureUpdateMessageComposer(habbo));
+                    room.sendComposer(new UserChangeMessageComposer(habbo).compose());
                 }
             }
         }

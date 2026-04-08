@@ -6,10 +6,10 @@ import com.eu.habbo.habbohotel.rooms.*;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.ServerMessage;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.generic.alerts.GenericAlertComposer;
-import com.eu.habbo.messages.outgoing.rooms.ForwardToRoomComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.HabboBroadcastMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.RoomForwardMessageComposer;
 import gnu.trove.set.hash.THashSet;
 
 import java.util.*;
@@ -21,7 +21,7 @@ public class FloorPlanEditorSaveEvent extends MessageHandler {
     @Override
     public void handle() throws Exception {
         if (!this.client.getHabbo().hasPermission(Permission.ACC_FLOORPLAN_EDITOR)) {
-            this.client.sendResponse(new GenericAlertComposer(Emulator.getTexts().getValue("floorplan.permission")));
+            this.client.sendResponse(new HabboBroadcastMessageComposer(Emulator.getTexts().getValue("floorplan.permission")));
             return;
         }
 
@@ -59,7 +59,7 @@ public class FloorPlanEditorSaveEvent extends MessageHandler {
                 else if (Arrays.stream(mapRows).anyMatch(l -> l.length() > MAXIMUM_FLOORPLAN_WIDTH_LENGTH || l.length() == 0)) errors.add("${notification.floorplan_editor.error.message.too_large_width}");
 
                 if (errors.length() > 0) {
-                    this.client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FLOORPLAN_EDITOR_ERROR.key, errors.toString()));
+                    this.client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FLOORPLAN_EDITOR_ERROR.key, errors.toString()));
                     return;
                 }
             }
@@ -136,7 +136,7 @@ public class FloorPlanEditorSaveEvent extends MessageHandler {
 
 
             if (errors.length() > 0) {
-                this.client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FLOORPLAN_EDITOR_ERROR.key, errors.toString()));
+                this.client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FLOORPLAN_EDITOR_ERROR.key, errors.toString()));
                 return;
             }
 
@@ -173,7 +173,7 @@ public class FloorPlanEditorSaveEvent extends MessageHandler {
                 habbos.addAll(room.getHabbos());
                 Emulator.getGameEnvironment().getRoomManager().unloadRoom(room);
                 room = Emulator.getGameEnvironment().getRoomManager().loadRoom(room.getId());
-                ServerMessage message = new ForwardToRoomComposer(room.getId()).compose();
+                ServerMessage message = new RoomForwardMessageComposer(room.getId()).compose();
                 for (Habbo habbo : habbos) {
                     habbo.getClient().sendResponse(message);
                 }

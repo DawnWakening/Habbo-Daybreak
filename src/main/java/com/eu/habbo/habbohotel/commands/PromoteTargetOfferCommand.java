@@ -4,8 +4,8 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.catalog.TargetOffer;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.catalog.TargetedOfferComposer;
-import com.eu.habbo.messages.outgoing.generic.alerts.MessagesForYouComposer;
+import com.eu.habbo.messages.outgoing.catalog.TargetedOfferMessageComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.MOTDNotificationMessageComposer;
 import gnu.trove.map.hash.THashMap;
 
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public class PromoteTargetOfferCommand extends Command {
                 }
             }
 
-            gameClient.sendResponse(new MessagesForYouComposer(message));
+            gameClient.sendResponse(new MOTDNotificationMessageComposer(message));
         } else {
             int offerId = 0;
             try {
@@ -59,7 +59,7 @@ public class PromoteTargetOfferCommand extends Command {
                     gameClient.getHabbo().whisper(Emulator.getTexts().getValue("commands.succes.cmd_promote_offer").replace("%id%", offerKey).replace("%title%", offer.getTitle()));
 
                     for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
-                        habbo.getClient().sendResponse(new TargetedOfferComposer(habbo, offer));
+                        habbo.getClient().sendResponse(new TargetedOfferMessageComposer(habbo, offer));
                     }
                 }
             } else {

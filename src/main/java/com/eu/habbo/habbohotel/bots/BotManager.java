@@ -6,13 +6,13 @@ import com.eu.habbo.habbohotel.rooms.*;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.generic.alerts.BotErrorComposer;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.BotErrorMessageComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.inventory.AddBotComposer;
-import com.eu.habbo.messages.outgoing.inventory.RemoveBotComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUsersComposer;
+import com.eu.habbo.messages.outgoing.inventory.BotAddedToInventoryMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.BotRemovedFromInventoryMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UsersMessageComposer;
 import com.eu.habbo.plugin.events.bots.BotPickUpEvent;
 import com.eu.habbo.plugin.events.bots.BotPlacedEvent;
 import gnu.trove.map.hash.THashMap;
@@ -110,7 +110,7 @@ public class BotManager {
         if (room != null && bot != null && habbo != null) {
             if (room.getOwnerId() == habbo.getHabboInfo().getId() || habbo.hasPermission(Permission.ACC_ANYROOMOWNER) || habbo.hasPermission(Permission.ACC_PLACEFURNI)) {
                 if (room.getCurrentBots().size() >= Room.MAXIMUM_BOTS && !habbo.hasPermission(Permission.ACC_UNLIMITED_BOTS)) {
-                    habbo.getClient().sendResponse(new BotErrorComposer(BotErrorComposer.ROOM_ERROR_MAX_BOTS));
+                    habbo.getClient().sendResponse(new BotErrorMessageComposer(BotErrorMessageComposer.ROOM_ERROR_MAX_BOTS));
                     return;
                 }
 
@@ -118,7 +118,7 @@ public class BotManager {
                     return;
 
                 if (room.hasBotsAt(location.x, location.y)) {
-                    habbo.getClient().sendResponse(new BotErrorComposer(BotErrorComposer.ROOM_ERROR_BOTS_SELECTED_TILE_NOT_FREE));
+                    habbo.getClient().sendResponse(new BotErrorMessageComposer(BotErrorMessageComposer.ROOM_ERROR_BOTS_SELECTED_TILE_NOT_FREE));
                     return;
                 }
 
@@ -138,10 +138,10 @@ public class BotManager {
                 bot.onPlaceUpdate();
                 room.addBot(bot);
                 Emulator.getThreading().run(bot);
-                room.sendComposer(new RoomUsersComposer(bot).compose());
-                room.sendComposer(new RoomUserStatusComposer(bot.getRoomUnit()).compose());
+                room.sendComposer(new UsersMessageComposer(bot).compose());
+                room.sendComposer(new UserUpdateMessageComposer(bot.getRoomUnit()).compose());
                 habbo.getInventory().getBotsComponent().removeBot(bot);
-                habbo.getClient().sendResponse(new RemoveBotComposer(bot));
+                habbo.getClient().sendResponse(new BotRemovedFromInventoryMessageComposer(bot));
                 bot.onPlace(habbo, room);
 
                 HabboItem topItem = room.getTopItemAt(location.x, location.y);
@@ -156,7 +156,7 @@ public class BotManager {
 
                 bot.cycle(false);
             } else {
-                habbo.getClient().sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, FurnitureMovementError.NO_RIGHTS.errorCode));
+                habbo.getClient().sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, FurnitureMovementError.NO_RIGHTS.errorCode));
             }
         }
     }
@@ -194,7 +194,7 @@ public class BotManager {
                 Habbo receiver = habbo == null ? Emulator.getGameEnvironment().getHabboManager().getHabbo(receiverInfo.getId()) : habbo;
                 if (receiver != null) {
                     receiver.getInventory().getBotsComponent().addBot(bot);
-                    receiver.getClient().sendResponse(new AddBotComposer(bot));
+                    receiver.getClient().sendResponse(new BotAddedToInventoryMessageComposer(bot));
                 }
             }
         }

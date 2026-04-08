@@ -6,7 +6,7 @@ import com.eu.habbo.habbohotel.achievements.AchievementManager;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.habbohotel.users.HabboManager;
-import com.eu.habbo.messages.outgoing.friends.UpdateFriendComposer;
+import com.eu.habbo.messages.outgoing.friends.FriendListUpdateMessageComposer;
 import com.eu.habbo.plugin.events.users.friends.UserAcceptFriendRequestEvent;
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
@@ -302,7 +302,7 @@ public class Messenger {
                             buddy.setLook(owner.getHabboInfo().getLook());
                             buddy.setGender(owner.getHabboInfo().getGender());
                             buddy.setUsername(owner.getHabboInfo().getUsername());
-                            habbo.getClient().sendResponse(new UpdateFriendComposer(habbo, buddy, 0));
+                            habbo.getClient().sendResponse(new FriendListUpdateMessageComposer(habbo, buddy, 0));
                         }
                     }
                 }
@@ -368,12 +368,12 @@ public class Messenger {
                     return;
                 }
 
-                habboTo.getClient().sendResponse(new UpdateFriendComposer(habboTo, to, 1));
-                habboFrom.getClient().sendResponse(new UpdateFriendComposer(habboFrom, from, 1));
+                habboTo.getClient().sendResponse(new FriendListUpdateMessageComposer(habboTo, to, 1));
+                habboFrom.getClient().sendResponse(new FriendListUpdateMessageComposer(habboFrom, from, 1));
             } else if (habboTo != null) {
-                habboTo.getClient().sendResponse(new UpdateFriendComposer(habboTo, this.loadFriend(habboTo, userFrom), 1));
+                habboTo.getClient().sendResponse(new FriendListUpdateMessageComposer(habboTo, this.loadFriend(habboTo, userFrom), 1));
             } else if (habboFrom != null) {
-                habboFrom.getClient().sendResponse(new UpdateFriendComposer(habboFrom, this.loadFriend(habboFrom, userTo), 1));
+                habboFrom.getClient().sendResponse(new FriendListUpdateMessageComposer(habboFrom, this.loadFriend(habboFrom, userTo), 1));
             }
         }
     }

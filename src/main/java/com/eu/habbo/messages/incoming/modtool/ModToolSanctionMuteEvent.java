@@ -7,7 +7,7 @@ import com.eu.habbo.habbohotel.modtool.ModToolSanctions;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.modtool.ModToolIssueHandledComposer;
+import com.eu.habbo.messages.outgoing.modtool.IssueCloseNotificationMessageComposer;
 import gnu.trove.map.hash.THashMap;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public class ModToolSanctionMuteEvent extends MessageHandler {
                     this.client.getHabbo().whisper(Emulator.getTexts().getValue("commands.succes.cmd_mute.muted").replace("%user%", habbo.getHabboInfo().getUsername()));
                 }
             } else {
-                this.client.sendResponse(new ModToolIssueHandledComposer(Emulator.getTexts().getValue("generic.user.not_found").replace("%user%", Emulator.getConfig().getValue("hotel.player.name"))));
+                this.client.sendResponse(new IssueCloseNotificationMessageComposer(Emulator.getTexts().getValue("generic.user.not_found").replace("%user%", Emulator.getConfig().getValue("hotel.player.name"))));
             }
         }
     }

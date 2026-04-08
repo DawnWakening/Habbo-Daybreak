@@ -39,7 +39,7 @@ package com.eu.habbo.util.callback;
                 in.close();
 
                 logger.info(text.toString());
-                Emulator.getGameServer().getGameClientManager().sendBroadcastResponse(new GenericAlertComposer(text.toString()));
+                Emulator.getGameServer().getGameClientManager().sendBroadcastResponse(new HabboBroadcastMessageComposer(text.toString()));
             }
             wr.close();
             con.disconnect();

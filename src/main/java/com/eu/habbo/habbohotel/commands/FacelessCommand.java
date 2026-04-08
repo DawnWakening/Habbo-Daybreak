@@ -2,8 +2,8 @@ package com.eu.habbo.habbohotel.commands;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDataComposer;
-import com.eu.habbo.messages.outgoing.users.UpdateUserLookComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserChangeMessageComposer;
+import com.eu.habbo.messages.outgoing.users.FigureUpdateMessageComposer;
 
 
 public class FacelessCommand extends Command {
@@ -30,8 +30,8 @@ public class FacelessCommand extends Command {
                         String newHead = "hd-" + headParts[1] + "-" + headParts[2];
 
                         gameClient.getHabbo().getHabboInfo().setLook(gameClient.getHabbo().getHabboInfo().getLook().replace(part, newHead));
-                        gameClient.sendResponse(new UpdateUserLookComposer(gameClient.getHabbo()));
-                        gameClient.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new RoomUserDataComposer(gameClient.getHabbo()).compose());
+                        gameClient.sendResponse(new FigureUpdateMessageComposer(gameClient.getHabbo()));
+                        gameClient.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UserChangeMessageComposer(gameClient.getHabbo()).compose());
                         return true;
                     }
                 }

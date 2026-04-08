@@ -6,11 +6,11 @@ import com.eu.habbo.habbohotel.items.interactions.InteractionClothing;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.users.UserClothesComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.users.FigureSetIdsMessageComposer;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +40,8 @@ public class RedeemClothingEvent extends MessageHandler {
                             RoomTile tile = this.client.getHabbo().getHabboInfo().getCurrentRoom().getLayout().getTile(item.getX(), item.getY());
                             this.client.getHabbo().getHabboInfo().getCurrentRoom().removeHabboItem(item);
                             this.client.getHabbo().getHabboInfo().getCurrentRoom().updateTile(tile);
-                            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UpdateStackHeightComposer(tile.x, tile.y, tile.z, tile.relativeHeight()).compose());
-                            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new RemoveFloorItemComposer(item, true).compose());
+                            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new HeightMapUpdateMessageComposer(tile.x, tile.y, tile.z, tile.relativeHeight()).compose());
+                            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new ObjectRemoveMessageComposer(item, true).compose());
                             Emulator.getThreading().run(new QueryDeleteHabboItem(item.getId()));
 
                             try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO users_clothing (user_id, clothing_id) VALUES (?, ?)")) {
@@ -54,11 +54,11 @@ public class RedeemClothingEvent extends MessageHandler {
 
                             this.client.getHabbo().getInventory().getWardrobeComponent().getClothing().add(clothing.id);
                             this.client.getHabbo().getInventory().getWardrobeComponent().getClothingSets().addAll(clothing.setId);
-                            this.client.sendResponse(new UserClothesComposer(this.client.getHabbo()));
-                            this.client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FIGURESET_REDEEMED.key));
+                            this.client.sendResponse(new FigureSetIdsMessageComposer(this.client.getHabbo()));
+                            this.client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FIGURESET_REDEEMED.key));
 
                         } else {
-                            this.client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FIGURESET_OWNED_ALREADY.key));
+                            this.client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FIGURESET_OWNED_ALREADY.key));
                         }
                     } else {
                         LOGGER.error("[Catalog] No definition in catalog_clothing found for clothing name {}. Could not redeem clothing!", item.getBaseItem().getName());

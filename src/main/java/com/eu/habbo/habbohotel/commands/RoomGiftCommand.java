@@ -6,8 +6,8 @@ import com.eu.habbo.habbohotel.items.Item;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
-import com.eu.habbo.messages.outgoing.wired.WiredRewardAlertComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
+import com.eu.habbo.messages.outgoing.wired.WiredRewardResultMessageComposer;
 
 public class RoomGiftCommand extends Command {
     public RoomGiftCommand() {
@@ -58,9 +58,9 @@ public class RoomGiftCommand extends Command {
 
                 Emulator.getGameEnvironment().getItemManager().createGift(habbo.getHabboInfo().getUsername(), giftItem, extraData, 0, 0);
 
-                habbo.getClient().sendResponse(new InventoryRefreshComposer());
+                habbo.getClient().sendResponse(new FurniListInvalidateMessageComposer());
 
-                habbo.getClient().sendResponse(new WiredRewardAlertComposer(WiredRewardAlertComposer.REWARD_RECEIVED_ITEM));
+                habbo.getClient().sendResponse(new WiredRewardResultMessageComposer(WiredRewardResultMessageComposer.REWARD_RECEIVED_ITEM));
             }
 
             return true;

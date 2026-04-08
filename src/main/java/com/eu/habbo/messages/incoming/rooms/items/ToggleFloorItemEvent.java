@@ -7,9 +7,9 @@ import com.eu.habbo.habbohotel.pets.MonsterplantPet;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.pets.PetPackageComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.pets.FurnitureAliasesMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurnitureToggleEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
@@ -109,17 +109,17 @@ public class ToggleFloorItemEvent extends MessageHandler {
                     }
                 }
                 MonsterplantPet pet = Emulator.getGameEnvironment().getPetManager().createMonsterplant(room, this.client.getHabbo(), isRare, room.getLayout().getTile(item.getX(), item.getY()), rarity);
-                room.sendComposer(new RemoveFloorItemComposer(item, true).compose());
+                room.sendComposer(new ObjectRemoveMessageComposer(item, true).compose());
                 room.removeHabboItem(item);
                 room.updateTile(room.getLayout().getTile(item.getX(), item.getY()));
                 room.placePet(pet, item.getX(), item.getY(), item.getZ(), item.getRotation());
                 pet.cycle();
-                room.sendComposer(new RoomUserStatusComposer(pet.getRoomUnit()).compose());
+                room.sendComposer(new UserUpdateMessageComposer(pet.getRoomUnit()).compose());
                 return;
             }
 
             if (PET_BOXES.contains(item.getBaseItem().getName()) && room.getCurrentPets().size() < Room.MAXIMUM_PETS) {
-                this.client.sendResponse(new PetPackageComposer(item));
+                this.client.sendResponse(new FurnitureAliasesMessageComposer(item));
                 return;
             }
 

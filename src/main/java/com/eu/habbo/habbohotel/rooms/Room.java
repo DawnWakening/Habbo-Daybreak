@@ -43,19 +43,19 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.ISerialize;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.guilds.GuildInfoComposer;
-import com.eu.habbo.messages.outgoing.hotelview.HotelViewComposer;
-import com.eu.habbo.messages.outgoing.inventory.AddHabboItemComposer;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
-import com.eu.habbo.messages.outgoing.rooms.HideDoorbellComposer;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.FloorItemUpdateComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.ItemStateComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveWallItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RoomFloorItemsComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.WallItemUpdateComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.guilds.HabboGroupDetailsMessageComposer;
+import com.eu.habbo.messages.outgoing.hotelview.CloseConnectionMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.FlatAccessibleMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.OneWayDoorStatusMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectsMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurniturePickedUpEvent;
 import com.eu.habbo.plugin.events.rooms.RoomLoadedEvent;
@@ -768,7 +768,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     item.needsUpdate(true);
 
     if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
-      this.sendComposer(new RemoveFloorItemComposer(item).compose());
+      this.sendComposer(new ObjectRemoveMessageComposer(item).compose());
 
       THashSet<RoomTile> updatedTiles = new THashSet<>();
       Rectangle rectangle = RoomLayout.getRectangle(item.getX(), item.getY(),
@@ -785,22 +785,22 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
           }
         }
       }
-      this.sendComposer(new UpdateStackHeightComposer(this, updatedTiles).compose());
+      this.sendComposer(new HeightMapUpdateMessageComposer(this, updatedTiles).compose());
       this.updateTiles(updatedTiles);
       for (RoomTile tile : updatedTiles) {
         this.updateHabbosAt(tile.x, tile.y);
         this.updateBotsAt(tile.x, tile.y);
       }
     } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
-      this.sendComposer(new RemoveWallItemComposer(item).compose());
+      this.sendComposer(new ItemRemoveMessageComposer(item).compose());
     }
 
     Habbo habbo = (picker != null && picker.getHabboInfo().getId() == item.getId() ? picker
         : Emulator.getGameServer().getGameClientManager().getHabbo(item.getUserId()));
     if (habbo != null) {
       habbo.getInventory().getItemsComponent().addItem(item);
-      habbo.getClient().sendResponse(new AddHabboItemComposer(item));
-      habbo.getClient().sendResponse(new InventoryRefreshComposer());
+      habbo.getClient().sendResponse(new UnseenItemsMessageComposer(item));
+      habbo.getClient().sendResponse(new FurniListInvalidateMessageComposer());
     }
     Emulator.getThreading().run(item);
   }
@@ -844,7 +844,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       }
     }
 
-    this.sendComposer(new RoomUserStatusComposer(roomUnit).compose());
+    this.sendComposer(new UserUpdateMessageComposer(roomUnit).compose());
   }
 
   public void updateHabbosAt(short x, short y) {
@@ -948,7 +948,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
             Emulator.getGameEnvironment().getRoomManager().leaveRoom(habbo, this);
           }
 
-          this.sendComposer(new HotelViewComposer().compose());
+          this.sendComposer(new CloseConnectionMessageComposer().compose());
 
           // Save bots BEFORE clearing - must happen before unitManager.clear()
           TIntObjectIterator<Bot> botIterator = this.getCurrentBots().iterator();
@@ -1667,7 +1667,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
 
   public boolean removeFromQueue(Habbo habbo) {
     try {
-      this.sendComposer(new HideDoorbellComposer(habbo.getHabboInfo().getUsername()).compose());
+      this.sendComposer(new FlatAccessibleMessageComposer(habbo.getHabboInfo().getUsername()).compose());
 
       return this.unitManager.removeFromQueue(habbo.getHabboInfo().getId()) != null;
     } catch (Exception e) {
@@ -2169,7 +2169,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
         RoomUserRotation.values()[habbo.getRoomUnit().getBodyRotation().getValue()
             - habbo.getRoomUnit().getBodyRotation().getValue() % 2]);
     habbo.getRoomUnit().setStatus(RoomUnitStatus.SIT, 0.5 + "");
-    this.sendComposer(new RoomUserStatusComposer(habbo.getRoomUnit()).compose());
+    this.sendComposer(new UserUpdateMessageComposer(habbo.getRoomUnit()).compose());
   }
 
   public void makeStand(Habbo habbo) {
@@ -2184,7 +2184,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
           RoomUserRotation.values()[habbo.getRoomUnit().getBodyRotation().getValue()
               - habbo.getRoomUnit().getBodyRotation().getValue() % 2]);
       habbo.getRoomUnit().removeStatus(RoomUnitStatus.SIT);
-      this.sendComposer(new RoomUserStatusComposer(habbo.getRoomUnit()).compose());
+      this.sendComposer(new UserUpdateMessageComposer(habbo.getRoomUnit()).compose());
     }
   }
 
@@ -2209,13 +2209,13 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       if (item != null && item.getRoomId() == this.id) {
         if (item.getBaseItem() != null) {
           if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
-            this.sendComposer(new FloorItemUpdateComposer(item).compose());
+            this.sendComposer(new ObjectUpdateMessageComposer(item).compose());
             this.updateTiles(this.getLayout()
                 .getTilesAt(this.layout.getTile(item.getX(), item.getY()),
                     item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
                     item.getRotation()));
           } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
-            this.sendComposer(new WallItemUpdateComposer(item).compose());
+            this.sendComposer(new ItemUpdateMessageComposer(item).compose());
           }
         }
       }
@@ -2224,9 +2224,9 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
 
   public void updateItemState(HabboItem item) {
     if (!item.isLimited()) {
-      this.sendComposer(new ItemStateComposer(item).compose());
+      this.sendComposer(new OneWayDoorStatusMessageComposer(item).compose());
     } else {
-      this.sendComposer(new FloorItemUpdateComposer(item).compose());
+      this.sendComposer(new ObjectUpdateMessageComposer(item).compose());
     }
 
     if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
@@ -2284,7 +2284,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
         }
 
         habbo.getClient()
-            .sendResponse(new GuildInfoComposer(guild, habbo.getClient(), false, member.get()));
+            .sendResponse(new HabboGroupDetailsMessageComposer(guild, habbo.getClient(), false, member.get()));
       }
     }
 
@@ -2389,28 +2389,28 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
 
     if (this.hideWired) {
       for (HabboItem item : this.roomSpecialTypes.getTriggers()) {
-        this.sendComposer(new RemoveFloorItemComposer(item).compose());
+        this.sendComposer(new ObjectRemoveMessageComposer(item).compose());
       }
 
       for (HabboItem item : this.roomSpecialTypes.getEffects()) {
-        this.sendComposer(new RemoveFloorItemComposer(item).compose());
+        this.sendComposer(new ObjectRemoveMessageComposer(item).compose());
       }
 
       for (HabboItem item : this.roomSpecialTypes.getConditions()) {
-        this.sendComposer(new RemoveFloorItemComposer(item).compose());
+        this.sendComposer(new ObjectRemoveMessageComposer(item).compose());
       }
 
       for (HabboItem item : this.roomSpecialTypes.getExtras()) {
-        this.sendComposer(new RemoveFloorItemComposer(item).compose());
+        this.sendComposer(new ObjectRemoveMessageComposer(item).compose());
       }
     } else {
-      this.sendComposer(new RoomFloorItemsComposer(this.itemManager.getFurniOwnerNames(),
+      this.sendComposer(new ObjectsMessageComposer(this.itemManager.getFurniOwnerNames(),
           this.roomSpecialTypes.getTriggers()).compose());
-      this.sendComposer(new RoomFloorItemsComposer(this.itemManager.getFurniOwnerNames(),
+      this.sendComposer(new ObjectsMessageComposer(this.itemManager.getFurniOwnerNames(),
           this.roomSpecialTypes.getEffects()).compose());
-      this.sendComposer(new RoomFloorItemsComposer(this.itemManager.getFurniOwnerNames(),
+      this.sendComposer(new ObjectsMessageComposer(this.itemManager.getFurniOwnerNames(),
           this.roomSpecialTypes.getConditions()).compose());
-      this.sendComposer(new RoomFloorItemsComposer(this.itemManager.getFurniOwnerNames(),
+      this.sendComposer(new ObjectsMessageComposer(this.itemManager.getFurniOwnerNames(),
           this.roomSpecialTypes.getExtras()).compose());
     }
   }

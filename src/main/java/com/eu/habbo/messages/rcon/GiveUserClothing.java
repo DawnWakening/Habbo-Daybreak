@@ -3,9 +3,9 @@ package com.eu.habbo.messages.rcon;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertKeys;
-import com.eu.habbo.messages.outgoing.users.UserClothesComposer;
+import com.eu.habbo.messages.outgoing.users.FigureSetIdsMessageComposer;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +38,8 @@ public class GiveUserClothing extends RCONMessage<GiveUserClothing.JSONGiveUserC
 
             if (client != null) {
                 habbo.getInventory().getWardrobeComponent().getClothing().add(object.clothing_id);
-                client.sendResponse(new UserClothesComposer(habbo));
-                client.sendResponse(new BubbleAlertComposer(BubbleAlertKeys.FIGURESET_REDEEMED.key));
+                client.sendResponse(new FigureSetIdsMessageComposer(habbo));
+                client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FIGURESET_REDEEMED.key));
             }
         }
     }

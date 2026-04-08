@@ -4,7 +4,7 @@ import com.eu.habbo.habbohotel.catalog.marketplace.MarketPlace;
 import com.eu.habbo.habbohotel.catalog.marketplace.MarketPlaceOffer;
 import com.eu.habbo.messages.ServerMessage;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.catalog.marketplace.MarketplaceOffersComposer;
+import com.eu.habbo.messages.outgoing.catalog.marketplace.MarketPlaceOffersMessageComposer;
 
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ public class RequestOffersEvent extends MessageHandler {
 
         List<MarketPlaceOffer> offers = MarketPlace.getOffers(min, max, query, type);
 
-        ServerMessage message = new MarketplaceOffersComposer(offers).compose();
+        ServerMessage message = new MarketPlaceOffersMessageComposer(offers).compose();
         if (tryCache) {
             cachedResults.put(type, message);
         }

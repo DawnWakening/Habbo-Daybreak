@@ -14,7 +14,7 @@ import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.habbohotel.wired.core.WiredContext;
 import com.eu.habbo.messages.ServerMessage;
 import com.eu.habbo.messages.incoming.wired.WiredSaveException;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserWhisperComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.WhisperMessageComposer;
 import gnu.trove.procedure.TObjectProcedure;
 
 import java.sql.ResultSet;
@@ -97,7 +97,7 @@ public class WiredEffectWhisper extends InteractionWiredEffect {
 
                 if (habbo != null) {
                     String msg = this.message.replace("%user%", habbo.getHabboInfo().getUsername()).replace("%online_count%", Emulator.getGameEnvironment().getHabboManager().getOnlineCount() + "").replace("%room_count%", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size() + "");
-                    habbo.getClient().sendResponse(new RoomUserWhisperComposer(new RoomChatMessage(msg, habbo, habbo, RoomChatMessageBubbles.WIRED)));
+                    habbo.getClient().sendResponse(new WhisperMessageComposer(new RoomChatMessage(msg, habbo, habbo, RoomChatMessageBubbles.WIRED)));
 
                     if (habbo.getRoomUnit().isIdle()) {
                         habbo.getRoomUnit().getRoom().unIdle(habbo);
@@ -105,7 +105,7 @@ public class WiredEffectWhisper extends InteractionWiredEffect {
                 }
             } else {
                 for (Habbo h : room.getHabbos()) {
-                    h.getClient().sendResponse(new RoomUserWhisperComposer(new RoomChatMessage(this.message.replace("%user%", h.getHabboInfo().getUsername()).replace("%online_count%", Emulator.getGameEnvironment().getHabboManager().getOnlineCount() + "").replace("%room_count%", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size() + ""), h, h, RoomChatMessageBubbles.WIRED)));
+                    h.getClient().sendResponse(new WhisperMessageComposer(new RoomChatMessage(this.message.replace("%user%", h.getHabboInfo().getUsername()).replace("%online_count%", Emulator.getGameEnvironment().getHabboManager().getOnlineCount() + "").replace("%room_count%", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size() + ""), h, h, RoomChatMessageBubbles.WIRED)));
                 }
             }
         }

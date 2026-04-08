@@ -3,7 +3,7 @@ package com.eu.habbo.messages.incoming.handshake;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.messages.NoAuthMessage;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.handshake.InitDiffieHandshakeComposer;
+import com.eu.habbo.messages.outgoing.handshake.InitDiffieHandshakeMessageComposer;
 
 @NoAuthMessage
 public class InitDiffieHandshakeEvent extends MessageHandler {
@@ -15,7 +15,7 @@ public class InitDiffieHandshakeEvent extends MessageHandler {
             return;
         }
 
-        this.client.sendResponse(new InitDiffieHandshakeComposer(
+        this.client.sendResponse(new InitDiffieHandshakeMessageComposer(
                 this.client.getEncryption().getDiffie().getSignedPrime(),
                 this.client.getEncryption().getDiffie().getSignedGenerator()));
     }

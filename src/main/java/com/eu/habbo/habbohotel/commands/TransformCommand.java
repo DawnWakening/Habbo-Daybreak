@@ -6,8 +6,8 @@ import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.pets.PetData;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.rooms.RoomUnitType;
-import com.eu.habbo.messages.outgoing.generic.alerts.MessagesForYouComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserRemoveComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.MOTDNotificationMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserRemoveMessageComposer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,7 +30,7 @@ public class TransformCommand extends Command {
                 petNames.append(line.replace("%id%", p.getType() + "").replace("%name%", p.getName())).append("\r");
             }
 
-            gameClient.sendResponse(new MessagesForYouComposer(new String[]{petNames.toString()}));
+            gameClient.sendResponse(new MOTDNotificationMessageComposer(new String[]{petNames.toString()}));
             return true;
         } else {
             String petName = params[1];
@@ -57,7 +57,7 @@ public class TransformCommand extends Command {
                 gameClient.getHabbo().getHabboStats().cache.put("pet_type", petData);
                 gameClient.getHabbo().getHabboStats().cache.put("pet_race", race);
                 gameClient.getHabbo().getHabboStats().cache.put("pet_color", color);
-                gameClient.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new RoomUserRemoveComposer(gameClient.getHabbo().getRoomUnit()).compose());
+                gameClient.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UserRemoveMessageComposer(gameClient.getHabbo().getRoomUnit()).compose());
                 gameClient.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new RoomUserPetComposer(petData.getType(), race, color, gameClient.getHabbo()).compose());
             } else {
                 //Pet Not Found

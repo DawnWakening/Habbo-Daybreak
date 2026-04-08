@@ -6,12 +6,12 @@ import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.rooms.*;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.inventory.AddHabboItemComposer;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.PresentItemOpenedComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserWhisperComposer;
+import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.PresentOpenedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.WhisperMessageComposer;
 import com.eu.habbo.threading.runnables.OpenGift;
 
 public class OpenRecycleBoxEvent extends MessageHandler {
@@ -37,19 +37,19 @@ public class OpenRecycleBoxEvent extends MessageHandler {
                 Emulator.getThreading().run(new OpenGift(item, this.client.getHabbo(), room), item.getBaseItem().getName().contains("present_wrap") ? 1000 : 0);
             } else {
                 if (item.getExtradata().length() == 0) {
-                    this.client.sendResponse(new RoomUserWhisperComposer(new RoomChatMessage(Emulator.getTexts().getValue("error.recycler.box.empty"), this.client.getHabbo(), this.client.getHabbo(), RoomChatMessageBubbles.BOT)));
+                    this.client.sendResponse(new WhisperMessageComposer(new RoomChatMessage(Emulator.getTexts().getValue("error.recycler.box.empty"), this.client.getHabbo(), this.client.getHabbo(), RoomChatMessageBubbles.BOT)));
                 } else {
                     HabboItem reward = Emulator.getGameEnvironment().getItemManager().handleOpenRecycleBox(this.client.getHabbo(), item);
 
                     if (reward != null) {
                         this.client.getHabbo().getInventory().getItemsComponent().addItem(reward);
-                        this.client.sendResponse(new AddHabboItemComposer(reward));
-                        this.client.sendResponse(new InventoryRefreshComposer());
+                        this.client.sendResponse(new UnseenItemsMessageComposer(reward));
+                        this.client.sendResponse(new FurniListInvalidateMessageComposer());
 
-                        this.client.sendResponse(new PresentItemOpenedComposer(reward, item.getExtradata(), true));
+                        this.client.sendResponse(new PresentOpenedMessageComposer(reward, item.getExtradata(), true));
                     }
                 }
-                room.sendComposer(new RemoveFloorItemComposer(item).compose());
+                room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
                 room.removeHabboItem(item);
 
             }
@@ -64,7 +64,7 @@ public class OpenRecycleBoxEvent extends MessageHandler {
                         z = roomTile.z;
                     }
                 }
-                room.sendComposer(new UpdateStackHeightComposer(item.getX(), item.getY(), z, room.getStackHeight(item.getX(), item.getY(), true)).compose());
+                room.sendComposer(new HeightMapUpdateMessageComposer(item.getX(), item.getY(), z, room.getStackHeight(item.getX(), item.getY(), true)).compose());
             }
         }
     }

@@ -46,7 +46,7 @@ public class RoomTileManager {
             tile.setState(this.calculateTileState(tile));
         }
 
-        this.room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer(this.room, tiles).compose());
+        this.room.sendComposer(new com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer(this.room, tiles).compose());
     }
 
     /**

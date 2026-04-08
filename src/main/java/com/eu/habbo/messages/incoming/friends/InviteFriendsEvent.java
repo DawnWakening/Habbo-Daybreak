@@ -3,7 +3,7 @@ package com.eu.habbo.messages.incoming.friends;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.friends.RoomInviteComposer;
+import com.eu.habbo.messages.outgoing.friends.RoomInviteMessageComposer;
 
 public class InviteFriendsEvent extends MessageHandler {
     @Override
@@ -27,7 +27,7 @@ public class InviteFriendsEvent extends MessageHandler {
 
                 if (habbo != null) {
                     if (!habbo.getHabboStats().blockRoomInvites) {
-                        habbo.getClient().sendResponse(new RoomInviteComposer(this.client.getHabbo().getHabboInfo().getId(), message));
+                        habbo.getClient().sendResponse(new RoomInviteMessageComposer(this.client.getHabbo().getHabboInfo().getId(), message));
                     }
                 }
             }

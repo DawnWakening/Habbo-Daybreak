@@ -11,10 +11,10 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.rooms.RoomAccessDeniedComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUnitIdleComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserIgnoredComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.rooms.FlatAccessDeniedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.SleepMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.IgnoreResultMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntObjectMap;
@@ -123,7 +123,7 @@ public class RoomCycleManager {
 
                 // Send status updates
                 if (!updatedUnit.isEmpty()) {
-                    this.room.sendComposer(new RoomUserStatusComposer(updatedUnit, true).compose());
+                    this.room.sendComposer(new UserUpdateMessageComposer(updatedUnit, true).compose());
                 }
 
                 // Cycle trax manager
@@ -238,7 +238,7 @@ public class RoomCycleManager {
                 if (habbo.getRoomUnit().isIdle()) {
                     boolean danceIsNone = (habbo.getRoomUnit().getDanceType() == DanceType.NONE);
                     if (danceIsNone) {
-                        this.room.sendComposer(new RoomUnitIdleComposer(habbo.getRoomUnit()).compose());
+                        this.room.sendComposer(new SleepMessageComposer(habbo.getRoomUnit()).compose());
                     }
                     if (danceIsNone && !Emulator.getConfig()
                             .getBoolean("hotel.roomuser.idle.not_dancing.ignore.wired_idle")) {
@@ -269,7 +269,7 @@ public class RoomCycleManager {
         if (habbo.getHabboStats().mutedBubbleTracker && habbo.getHabboStats().allowTalk()) {
             habbo.getHabboStats().mutedBubbleTracker = false;
             this.room.sendComposer(
-                    new RoomUserIgnoredComposer(habbo, RoomUserIgnoredComposer.UNIGNORED).compose());
+                    new IgnoreResultMessageComposer(habbo, IgnoreResultMessageComposer.UNIGNORED).compose());
         }
     }
 
@@ -386,7 +386,7 @@ public class RoomCycleManager {
                     public boolean execute(int a, Habbo b) {
                         if (b.isOnline()) {
                             if (b.getHabboInfo().getRoomQueueId() == room.getId()) {
-                                b.getClient().sendResponse(new RoomAccessDeniedComposer(""));
+                                b.getClient().sendResponse(new FlatAccessDeniedMessageComposer(""));
                             }
                         }
                         return true;
@@ -419,7 +419,7 @@ public class RoomCycleManager {
         boolean update = unit.needsStatusUpdate();
 
         if (unit.hasStatus(RoomUnitStatus.SIGN)) {
-            this.room.sendComposer(new RoomUserStatusComposer(unit).compose());
+            this.room.sendComposer(new UserUpdateMessageComposer(unit).compose());
             unit.removeStatus(RoomUnitStatus.SIGN);
         }
 

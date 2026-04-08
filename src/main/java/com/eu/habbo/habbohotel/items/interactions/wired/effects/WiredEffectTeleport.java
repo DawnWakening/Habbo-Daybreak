@@ -20,8 +20,8 @@ import com.eu.habbo.habbohotel.wired.WiredEffectType;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.messages.ServerMessage;
 import com.eu.habbo.messages.incoming.wired.WiredSaveException;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserEffectComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.AvatarEffectMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import com.eu.habbo.threading.runnables.RoomUnitTeleport;
 import com.eu.habbo.threading.runnables.SendRoomUnitEffectComposer;
 import gnu.trove.procedure.TObjectProcedure;
@@ -75,7 +75,7 @@ public class WiredEffectTeleport extends InteractionWiredEffect {
                     petUnit.setGoalLocation(riderTile);
                     petUnit.removeStatus(RoomUnitStatus.MOVE);
                     petUnit.setCanWalk(false);
-                    room.sendComposer(new RoomUserStatusComposer(petUnit).compose());
+                    room.sendComposer(new UserUpdateMessageComposer(petUnit).compose());
                 }
             }
         }
@@ -83,7 +83,7 @@ public class WiredEffectTeleport extends InteractionWiredEffect {
         // makes a temporary effect
 
         roomUnit.getRoom().unIdle(roomUnit.getRoom().getHabbo(roomUnit));
-        room.sendComposer(new RoomUserEffectComposer(roomUnit, 4).compose());
+        room.sendComposer(new AvatarEffectMessageComposer(roomUnit, 4).compose());
         Emulator.getThreading().run(new SendRoomUnitEffectComposer(room, roomUnit), WiredManager.TELEPORT_DELAY + 1000);
 
         if (tile == roomUnit.getCurrentLocation()) {

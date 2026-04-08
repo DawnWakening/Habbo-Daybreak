@@ -12,8 +12,8 @@ import com.eu.habbo.habbohotel.wired.WiredConditionOperator;
 import com.eu.habbo.habbohotel.wired.api.IWiredCondition;
 import com.eu.habbo.habbohotel.wired.api.IWiredEffect;
 import com.eu.habbo.habbohotel.wired.api.WiredStack;
-import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
-import com.eu.habbo.messages.outgoing.generic.alerts.GenericAlertComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.NotificationDialogMessageComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.HabboBroadcastMessageComposer;
 import com.eu.habbo.plugin.events.furniture.wired.WiredStackExecutedEvent;
 import com.eu.habbo.plugin.events.furniture.wired.WiredStackTriggeredEvent;
 import gnu.trove.map.hash.THashMap;
@@ -644,7 +644,7 @@ public final class WiredEngine {
         // Send alert to all users in the room
         String roomAlertMessage = Emulator.getTexts().getValue("wired.abuse.room.alert")
                 .replace("%minutes%", String.valueOf(banMinutes));
-        room.sendComposer(new GenericAlertComposer(roomAlertMessage).compose());
+        room.sendComposer(new HabboBroadcastMessageComposer(roomAlertMessage).compose());
         
         // Send scripter bubble alert to staff with room link
         THashMap<String, String> keys = new THashMap<>();
@@ -656,7 +656,7 @@ public final class WiredEngine {
         keys.put("linkUrl", "event:navigator/goto/" + roomId);
         keys.put("linkTitle", Emulator.getTexts().getValue("wired.abuse.staff.link"));
         Emulator.getGameEnvironment().getHabboManager().sendPacketToHabbosWithPermission(
-                new BubbleAlertComposer("admin.staffalert", keys).compose(), 
+                new NotificationDialogMessageComposer("admin.staffalert", keys).compose(), 
                 "acc_modtool_room_info"
         );
         

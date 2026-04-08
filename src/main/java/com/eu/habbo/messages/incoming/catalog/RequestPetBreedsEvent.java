@@ -2,7 +2,7 @@ package com.eu.habbo.messages.incoming.catalog;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.catalog.PetBreedsComposer;
+import com.eu.habbo.messages.outgoing.catalog.SellablePetPalettesMessageComposer;
 
 public class RequestPetBreedsEvent extends MessageHandler {
     @Override
@@ -13,6 +13,6 @@ public class RequestPetBreedsEvent extends MessageHandler {
     @Override
     public void handle() throws Exception {
         final String petName = this.packet.readString();
-        this.client.sendResponse(new PetBreedsComposer(petName, Emulator.getGameEnvironment().getPetManager().getBreeds(petName)));
+        this.client.sendResponse(new SellablePetPalettesMessageComposer(petName, Emulator.getGameEnvironment().getPetManager().getBreeds(petName)));
     }
 }

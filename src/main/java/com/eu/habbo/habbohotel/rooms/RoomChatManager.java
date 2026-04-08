@@ -10,12 +10,12 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserNameChangedComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserShoutComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserTalkComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserTypingComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserWhisperComposer;
-import com.eu.habbo.messages.outgoing.users.MutedWhisperComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserNameChangedMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.ShoutMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.ChatMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserTypingMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.WhisperMessageComposer;
+import com.eu.habbo.messages.outgoing.users.RemainingMutePeriodMessageComposer;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UsernameTalkEvent;
 import com.eu.habbo.threading.runnables.YouAreAPirate;
@@ -263,7 +263,7 @@ public class RoomChatManager {
             }
         }
 
-        this.room.sendComposer(new RoomUserTypingComposer(habbo.getRoomUnit(), false).compose());
+        this.room.sendComposer(new UserTypingMessageComposer(habbo.getRoomUnit(), false).compose());
 
         if (roomChatMessage == null || roomChatMessage.getMessage() == null
             || roomChatMessage.getMessage().equals("")) {
@@ -297,7 +297,7 @@ public class RoomChatManager {
             }
 
             if (this.isMuted(habbo)) {
-                habbo.getClient().sendResponse(new MutedWhisperComposer(
+                habbo.getClient().sendResponse(new RemainingMutePeriodMessageComposer(
                     this.mutedHabbos.get(habbo.getHabboInfo().getId()) - Emulator.getIntUnixTimestamp()));
                 return;
             }
@@ -313,7 +313,7 @@ public class RoomChatManager {
 
             if (!ignoreWired) {
                 if (WiredManager.triggerUserSays(habbo.getHabboInfo().getCurrentRoom(), habbo.getRoomUnit(), roomChatMessage.getMessage())) {
-                    habbo.getClient().sendResponse(new RoomUserWhisperComposer(
+                    habbo.getClient().sendResponse(new WhisperMessageComposer(
                         new RoomChatMessage(roomChatMessage.getMessage(), habbo, habbo,
                             roomChatMessage.getBubble())));
                     return;
@@ -357,10 +357,10 @@ public class RoomChatManager {
 
         if (prefixMessage == null) {
             prefixMessage = roomChatMessage.getHabbo().getHabboInfo().getRank().hasPrefix()
-                ? new RoomUserNameChangedComposer(habbo, true).compose() : null;
+                ? new UserNameChangedMessageComposer(habbo, true).compose() : null;
         }
         ServerMessage clearPrefixMessage =
-            prefixMessage != null ? new RoomUserNameChangedComposer(habbo).compose() : null;
+            prefixMessage != null ? new UserNameChangedMessageComposer(habbo).compose() : null;
 
         Rectangle tentRectangle = this.room.getRoomSpecialTypes().tentAt(
             habbo.getRoomUnit().getCurrentLocation());
@@ -404,8 +404,8 @@ public class RoomChatManager {
             "To " + staffChatMessage.getTargetHabbo().getHabboInfo().getUsername() + ": "
                 + staffChatMessage.getMessage());
 
-        final ServerMessage message = new RoomUserWhisperComposer(roomChatMessage).compose();
-        final ServerMessage staffMessage = new RoomUserWhisperComposer(staffChatMessage).compose();
+        final ServerMessage message = new WhisperMessageComposer(roomChatMessage).compose();
+        final ServerMessage staffMessage = new WhisperMessageComposer(staffChatMessage).compose();
 
         for (Habbo h : this.room.getHabbos()) {
             if (h == roomChatMessage.getTargetHabbo() || h == habbo) {
@@ -433,7 +433,7 @@ public class RoomChatManager {
      */
     private void handleTalk(Habbo habbo, RoomChatMessage roomChatMessage,
         ServerMessage prefixMessage, ServerMessage clearPrefixMessage, Rectangle tentRectangle) {
-        ServerMessage message = new RoomUserTalkComposer(roomChatMessage).compose();
+        ServerMessage message = new ChatMessageComposer(roomChatMessage).compose();
         boolean noChatLimit = habbo.hasPermission(Permission.ACC_CHAT_NO_LIMIT);
         int chatDistance = this.room.getChatDistance();
 
@@ -489,7 +489,7 @@ public class RoomChatManager {
      */
     private void handleShout(Habbo habbo, RoomChatMessage roomChatMessage,
         ServerMessage prefixMessage, ServerMessage clearPrefixMessage, Rectangle tentRectangle) {
-        ServerMessage message = new RoomUserShoutComposer(roomChatMessage).compose();
+        ServerMessage message = new ShoutMessageComposer(roomChatMessage).compose();
 
         for (Habbo h : this.room.getHabbos()) {
             if (!h.getHabboStats().userIgnored(habbo.getHabboInfo().getId()) && (tentRectangle == null
@@ -546,7 +546,7 @@ public class RoomChatManager {
             staffChatMessage.setMessage(
                 "[" + Emulator.getTexts().getValue("hotel.room.tent.prefix") + "] "
                     + staffChatMessage.getMessage());
-            final ServerMessage staffMessage = new RoomUserWhisperComposer(staffChatMessage).compose();
+            final ServerMessage staffMessage = new WhisperMessageComposer(staffChatMessage).compose();
             receivingHabbo.getClient().sendResponse(staffMessage);
         }
     }
@@ -597,7 +597,7 @@ public class RoomChatManager {
                             .getInt(item.getBaseItem().getName() + ".message.bubble",
                                 RoomChatMessageBubbles.PARROT.getType())));
 
-                        this.room.sendComposer(new RoomUserTalkComposer(itemMessage).compose());
+                        this.room.sendComposer(new ChatMessageComposer(itemMessage).compose());
 
                         try {
                             item.onClick(habbo.getClient(), this.room, new Object[0]);

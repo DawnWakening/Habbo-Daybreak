@@ -4,8 +4,8 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomCategory;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.friends.FriendFindingRoomComposer;
-import com.eu.habbo.messages.outgoing.rooms.ForwardToRoomComposer;
+import com.eu.habbo.messages.outgoing.friends.FindFriendsProcessResultMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.RoomForwardMessageComposer;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,12 +23,12 @@ public class FindNewFriendsEvent extends MessageHandler {
                 Room room = rooms.get(0);
 
                 if (room.getUserCount() > 0) {
-                    this.client.sendResponse(new ForwardToRoomComposer(room.getId()));
+                    this.client.sendResponse(new RoomForwardMessageComposer(room.getId()));
                     return;
                 }
             }
         }
 
-        this.client.sendResponse(new FriendFindingRoomComposer(FriendFindingRoomComposer.NO_ROOM_FOUND));
+        this.client.sendResponse(new FindFriendsProcessResultMessageComposer(FindFriendsProcessResultMessageComposer.NO_ROOM_FOUND));
     }
 }

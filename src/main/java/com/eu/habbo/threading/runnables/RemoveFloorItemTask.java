@@ -3,8 +3,8 @@ package com.eu.habbo.threading.runnables;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
 
 class RemoveFloorItemTask implements Runnable {
     private final Room room;
@@ -23,7 +23,7 @@ class RemoveFloorItemTask implements Runnable {
         RoomTile tile = this.room.getLayout().getTile(this.item.getX(), this.item.getY());
         this.room.removeHabboItem(this.item);
         this.room.updateTile(tile);
-        this.room.sendComposer(new RemoveFloorItemComposer(this.item, true).compose());
-        this.room.sendComposer(new UpdateStackHeightComposer(this.item.getX(), this.item.getY(), tile.z, tile.relativeHeight()).compose());
+        this.room.sendComposer(new ObjectRemoveMessageComposer(this.item, true).compose());
+        this.room.sendComposer(new HeightMapUpdateMessageComposer(this.item.getX(), this.item.getY(), tile.z, tile.relativeHeight()).compose());
     }
 }

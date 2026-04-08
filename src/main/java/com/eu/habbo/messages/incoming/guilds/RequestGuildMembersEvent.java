@@ -6,7 +6,7 @@ import com.eu.habbo.habbohotel.guilds.GuildMember;
 import com.eu.habbo.habbohotel.guilds.GuildRank;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.guilds.GuildMembersComposer;
+import com.eu.habbo.messages.outgoing.guilds.GuildMembersMessageComposer;
 
 public class RequestGuildMembersEvent extends MessageHandler {
     @Override
@@ -30,7 +30,7 @@ public class RequestGuildMembersEvent extends MessageHandler {
                 isAdmin = member != null && (member.getRank().equals(GuildRank.OWNER) || member.getRank().equals(GuildRank.ADMIN));
             }
 
-            this.client.sendResponse(new GuildMembersComposer(g, Emulator.getGameEnvironment().getGuildManager().getGuildMembers(g, pageId, levelId, query), this.client.getHabbo(), pageId, levelId, query, isAdmin, Emulator.getGameEnvironment().getGuildManager().getGuildMembersCount(g, pageId, levelId, query)));
+            this.client.sendResponse(new GuildMembersMessageComposer(g, Emulator.getGameEnvironment().getGuildManager().getGuildMembers(g, pageId, levelId, query), this.client.getHabbo(), pageId, levelId, query, isAdmin, Emulator.getGameEnvironment().getGuildManager().getGuildMembersCount(g, pageId, levelId, query)));
         }
     }
 }

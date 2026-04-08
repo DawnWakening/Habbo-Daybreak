@@ -7,10 +7,10 @@ import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.rooms.RoomUnitStatus;
 import com.eu.habbo.habbohotel.rooms.RoomUserRotation;
 import com.eu.habbo.habbohotel.users.HabboItem;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserEffectComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserRemoveComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUsersComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.AvatarEffectMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UsersMessageComposer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,11 +79,11 @@ class TeleportInteraction extends Thread {
                 this.client.getHabbo().getRoomUnit().setLocation(this.room.getLayout().getTile(this.teleportTwo.getX(), this.teleportTwo.getY()));
                 this.client.getHabbo().getRoomUnit().setZ(this.teleportTwo.getZ());
 
-                this.room.sendComposer(new RoomUserRemoveComposer(this.client.getHabbo().getRoomUnit()).compose());
-                this.targetRoom.sendComposer(new RoomUserRemoveComposer(this.client.getHabbo().getRoomUnit()).compose());
-                this.targetRoom.sendComposer(new RoomUsersComposer(this.client.getHabbo()).compose());
-                this.targetRoom.sendComposer(new RoomUserStatusComposer(this.client.getHabbo().getRoomUnit()).compose());
-                this.targetRoom.sendComposer(new RoomUserEffectComposer(this.client.getHabbo().getRoomUnit()).compose());
+                this.room.sendComposer(new UserRemoveMessageComposer(this.client.getHabbo().getRoomUnit()).compose());
+                this.targetRoom.sendComposer(new UserRemoveMessageComposer(this.client.getHabbo().getRoomUnit()).compose());
+                this.targetRoom.sendComposer(new UsersMessageComposer(this.client.getHabbo()).compose());
+                this.targetRoom.sendComposer(new UserUpdateMessageComposer(this.client.getHabbo().getRoomUnit()).compose());
+                this.targetRoom.sendComposer(new AvatarEffectMessageComposer(this.client.getHabbo().getRoomUnit()).compose());
                 this.room.updateItem(this.teleportOne);
                 this.targetRoom.updateItem(this.teleportTwo);
 
@@ -99,7 +99,7 @@ class TeleportInteraction extends Thread {
                 this.client.getHabbo().getRoomUnit().setGoalLocation(this.room.getLayout().getTile(this.teleportOne.getX(), this.teleportOne.getY()));
                 this.client.getHabbo().getRoomUnit().setRotation(RoomUserRotation.values()[this.newRotation(this.teleportOne.getRotation())]);
                 this.client.getHabbo().getRoomUnit().setStatus(RoomUnitStatus.MOVE, this.teleportOne.getX() + "," + this.teleportOne.getY() + "," + this.teleportOne.getZ());
-                //room.sendComposer(new RoomUserStatusComposer(this.client.getHabbo().getRoomUnit()));
+                //room.sendComposer(new UserUpdateMessageComposer(this.client.getHabbo().getRoomUnit()));
 
                 this.state = 3;
 

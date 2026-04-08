@@ -55,7 +55,7 @@ public class RoomUnitTeleport implements Runnable {
         this.roomUnit.setZ(this.z);
         this.roomUnit.setPreviousLocationZ(this.z);
         this.roomUnit.removeStatus(RoomUnitStatus.MOVE);
-        //ServerMessage teleportMessage = new RoomUnitOnRollerComposer(this.roomUnit, newLocation, this.room).compose();
+        //ServerMessage teleportMessage = new SlideObjectBundleMessageComposer(this.roomUnit, newLocation, this.room).compose();
         this.roomUnit.setLocation(newLocation);
         //this.room.sendComposer(teleportMessage);
         this.roomUnit.statusUpdate(true);

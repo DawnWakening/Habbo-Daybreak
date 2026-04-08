@@ -234,10 +234,10 @@ public class Bot implements Runnable {
                 return;
 
             this.chatTimestamp = Emulator.getIntUnixTimestamp();
-            this.room.botChat(new RoomUserTalkComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))).compose());
+            this.room.botChat(new ChatMessageComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))).compose());
 
             if (message.equals("o/") || message.equals("_o/")) {
-                this.room.sendComposer(new RoomUserActionComposer(this.roomUnit, RoomUserAction.WAVE).compose());
+                this.room.sendComposer(new ExpressionMessageComposer(this.roomUnit, RoomUserAction.WAVE).compose());
             }
         }
     }
@@ -249,10 +249,10 @@ public class Bot implements Runnable {
                 return;
 
             this.chatTimestamp = Emulator.getIntUnixTimestamp();
-            this.room.botChat(new RoomUserShoutComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))).compose());
+            this.room.botChat(new ShoutMessageComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))).compose());
 
             if (message.equals("o/") || message.equals("_o/")) {
-                this.room.sendComposer(new RoomUserActionComposer(this.roomUnit, RoomUserAction.WAVE).compose());
+                this.room.sendComposer(new ExpressionMessageComposer(this.roomUnit, RoomUserAction.WAVE).compose());
             }
         }
     }
@@ -264,7 +264,7 @@ public class Bot implements Runnable {
                 return;
 
             this.chatTimestamp = Emulator.getIntUnixTimestamp();
-            event.target.getClient().sendResponse(new RoomUserWhisperComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))));
+            event.target.getClient().sendResponse(new WhisperMessageComposer(new RoomChatMessage(event.message, this.roomUnit, RoomChatMessageBubbles.getBubble(this.getBubbleId()))));
         }
     }
 
@@ -331,7 +331,7 @@ public class Bot implements Runnable {
         this.needsUpdate = true;
 
         if (this.room != null)
-            this.room.sendComposer(new RoomUsersComposer(this).compose());
+            this.room.sendComposer(new UsersMessageComposer(this).compose());
     }
 
     public HabboGender getGender() {
@@ -343,7 +343,7 @@ public class Bot implements Runnable {
         this.needsUpdate = true;
 
         if (this.room != null)
-            this.room.sendComposer(new RoomUsersComposer(this).compose());
+            this.room.sendComposer(new UsersMessageComposer(this).compose());
     }
 
     public int getOwnerId() {
@@ -355,7 +355,7 @@ public class Bot implements Runnable {
         this.needsUpdate = true;
 
         if (this.room != null)
-            this.room.sendComposer(new RoomUsersComposer(this).compose());
+            this.room.sendComposer(new UsersMessageComposer(this).compose());
     }
 
     public String getOwnerName() {
@@ -367,7 +367,7 @@ public class Bot implements Runnable {
         this.needsUpdate = true;
 
         if (this.room != null)
-            this.room.sendComposer(new RoomUsersComposer(this).compose());
+            this.room.sendComposer(new UsersMessageComposer(this).compose());
     }
 
     public Room getRoom() {

@@ -5,8 +5,8 @@ import com.eu.habbo.habbohotel.items.YoutubeManager;
 import com.eu.habbo.habbohotel.items.interactions.InteractionYoutubeTV;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.handshake.ConnectionErrorComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.youtube.YoutubeDisplayListComposer;
+import com.eu.habbo.messages.outgoing.handshake.ErrorReportMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.youtube.YoutubeDisplayPlaylistsMessageComposer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,11 +29,11 @@ public class YoutubeRequestPlaylists extends MessageHandler {
 
                 if (playlists == null) {
                     LOGGER.error("No YouTube playlists set for base item #{}", item.getBaseItem().getId());
-                    this.client.sendResponse(new ConnectionErrorComposer(1000));
+                    this.client.sendResponse(new ErrorReportMessageComposer(1000));
                     return;
                 }
 
-                this.client.sendResponse(new YoutubeDisplayListComposer(itemId, playlists, tv.currentPlaylist));
+                this.client.sendResponse(new YoutubeDisplayPlaylistsMessageComposer(itemId, playlists, tv.currentPlaylist));
             }
         }
     }

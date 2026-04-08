@@ -26,15 +26,15 @@ import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.habbohotel.users.HabboManager;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.habbohotel.wired.tick.WiredTickable;
-import com.eu.habbo.messages.outgoing.inventory.AddHabboItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.FloorItemUpdateComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.ItemStateComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.RemoveWallItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.WallItemUpdateComposer;
+import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.OneWayDoorStatusMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemRemoveMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemUpdateMessageComposer;
 import com.eu.habbo.habbohotel.permissions.Permission;
-import com.eu.habbo.messages.outgoing.rooms.items.AddFloorItemComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.AddWallItemComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ObjectAddMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.ItemAddMessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.FloorItemOnRollerComposer;
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurnitureBuildheightEvent;
@@ -827,13 +827,13 @@ public class RoomItemManager {
             if (item != null && item.getRoomId() == this.room.getId()) {
                 if (item.getBaseItem() != null) {
                     if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
-                        this.room.sendComposer(new FloorItemUpdateComposer(item).compose());
+                        this.room.sendComposer(new ObjectUpdateMessageComposer(item).compose());
                         this.room.updateTiles(this.room.getLayout()
                             .getTilesAt(this.room.getLayout().getTile(item.getX(), item.getY()),
                                 item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
                                 item.getRotation()));
                     } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
-                        this.room.sendComposer(new WallItemUpdateComposer(item).compose());
+                        this.room.sendComposer(new ItemUpdateMessageComposer(item).compose());
                     }
                 }
             }
@@ -845,9 +845,9 @@ public class RoomItemManager {
      */
     public void updateItemState(HabboItem item) {
         if (!item.isLimited()) {
-            this.room.sendComposer(new ItemStateComposer(item).compose());
+            this.room.sendComposer(new OneWayDoorStatusMessageComposer(item).compose());
         } else {
-            this.room.sendComposer(new FloorItemUpdateComposer(item).compose());
+            this.room.sendComposer(new ObjectUpdateMessageComposer(item).compose());
         }
 
         if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
@@ -936,7 +936,7 @@ public class RoomItemManager {
         item.needsUpdate(true);
 
         if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
-            this.room.sendComposer(new RemoveFloorItemComposer(item).compose());
+            this.room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
 
             THashSet<RoomTile> updatedTiles = this.room.getLayout().getTilesAt(
                 this.room.getLayout().getTile(item.getX(), item.getY()),
@@ -950,7 +950,7 @@ public class RoomItemManager {
                 this.room.updateBotsAt(tile.x, tile.y);
             }
         } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
-            this.room.sendComposer(new RemoveWallItemComposer(item).compose());
+            this.room.sendComposer(new ItemRemoveMessageComposer(item).compose());
         }
 
         Emulator.getThreading().run(item);
@@ -981,7 +981,7 @@ public class RoomItemManager {
 
         if (habbo != null) {
             habbo.getInventory().getItemsComponent().addItems(items);
-            habbo.getClient().sendResponse(new AddHabboItemComposer(items));
+            habbo.getClient().sendResponse(new UnseenItemsMessageComposer(items));
         }
 
         for (HabboItem i : items) {
@@ -1041,7 +1041,7 @@ public class RoomItemManager {
 
             if (user != null) {
                 user.getInventory().getItemsComponent().addItems(entrySet.getValue());
-                user.getClient().sendResponse(new AddHabboItemComposer(entrySet.getValue()));
+                user.getClient().sendResponse(new UnseenItemsMessageComposer(entrySet.getValue()));
             }
         }
     }
@@ -1330,7 +1330,7 @@ public class RoomItemManager {
         item.onPlace(this.room);
         this.room.updateTiles(occupiedTiles);
         this.room.sendComposer(
-            new AddFloorItemComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
+            new ObjectAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
 
         for (RoomTile t : occupiedTiles) {
             this.room.updateHabbosAt(t.x, t.y);
@@ -1364,7 +1364,7 @@ public class RoomItemManager {
             this.furniOwnerNames.put(item.getUserId(), owner.getHabboInfo().getUsername());
         }
         this.room.sendComposer(
-            new AddWallItemComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
+            new ItemAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
         item.needsUpdate(true);
         this.addHabboItem(item);
         item.setRoomId(this.room.getId());
@@ -1568,7 +1568,7 @@ public class RoomItemManager {
         Emulator.getThreading().run(item);
 
         if (sendUpdates) {
-            this.room.sendComposer(new FloorItemUpdateComposer(item).compose());
+            this.room.sendComposer(new ObjectUpdateMessageComposer(item).compose());
         }
 
         // Update old & new tiles

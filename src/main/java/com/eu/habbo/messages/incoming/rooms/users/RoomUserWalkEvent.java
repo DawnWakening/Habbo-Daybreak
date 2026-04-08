@@ -10,7 +10,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUnitOnRollerComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.SlideObjectBundleMessageComposer;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import gnu.trove.set.hash.THashSet;
 import org.slf4j.Logger;
@@ -163,11 +163,11 @@ public class RoomUserWalkEvent extends MessageHandler {
   private static void handleTeleport(Room room, short x, short y, RoomUnit roomUnit,
       HabboInfo habboInfo) {
     RoomTile t = room.getLayout().getTile(x, y);
-    room.sendComposer(new RoomUnitOnRollerComposer(roomUnit, t, room).compose());
+    room.sendComposer(new SlideObjectBundleMessageComposer(roomUnit, t, room).compose());
 
     if (habboInfo.getRiding() != null) {
       room.sendComposer(
-          new RoomUnitOnRollerComposer(habboInfo.getRiding().getRoomUnit(), t, room).compose());
+          new SlideObjectBundleMessageComposer(habboInfo.getRiding().getRoomUnit(), t, room).compose());
     }
   }
 

@@ -51,7 +51,7 @@ public class RoomUserLookAtPoint extends MessageHandler {
         if (tile != null) {
             roomUnit.lookAtPoint(tile);
             roomUnit.statusUpdate(true);
-            //room.sendComposer(new RoomUserStatusComposer(roomUnit).compose());
+            //room.sendComposer(new UserUpdateMessageComposer(roomUnit).compose());
         }
     }
 }

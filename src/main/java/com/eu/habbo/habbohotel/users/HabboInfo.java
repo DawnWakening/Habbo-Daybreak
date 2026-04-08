@@ -12,7 +12,7 @@ import com.eu.habbo.habbohotel.pets.RideablePet;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserUpdateMessageComposer;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.procedure.TIntIntProcedure;
 import org.slf4j.Logger;
@@ -455,10 +455,10 @@ public class HabboInfo implements Runnable {
         // Also update the pet's status now that it's no longer being ridden
         if (riding.getRoomUnit() != null) {
             riding.getRoomUnit().setCanWalk(true);
-            room.sendComposer(new RoomUserStatusComposer(riding.getRoomUnit()).compose());
+            room.sendComposer(new UserUpdateMessageComposer(riding.getRoomUnit()).compose());
         }
         
-        room.sendComposer(new RoomUserStatusComposer(roomUnit).compose());
+        room.sendComposer(new UserUpdateMessageComposer(roomUnit).compose());
         List<RoomTile> availableTiles = isRemoving ? new ArrayList<>() : this.getCurrentRoom().getLayout().getWalkableTilesAround(roomUnit.getCurrentLocation());
 
         RoomTile tile = availableTiles.isEmpty() ? roomUnit.getCurrentLocation() : availableTiles.get(0);

@@ -2,8 +2,8 @@ package com.eu.habbo.habbohotel.rooms;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.polls.infobus.SimplePollAnswerComposer;
-import com.eu.habbo.messages.outgoing.polls.infobus.SimplePollStartComposer;
+import com.eu.habbo.messages.outgoing.polls.infobus.QuestionAnsweredMessageComposer;
+import com.eu.habbo.messages.outgoing.polls.infobus.QuestionMessageComposer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public class RoomWordQuizManager {
                 }
 
                 this.room.sendComposer(
-                    new SimplePollAnswerComposer(habbo.getHabboInfo().getId(), answer, this.noVotes,
+                    new QuestionAnsweredMessageComposer(habbo.getHabboInfo().getId(), answer, this.noVotes,
                         this.yesVotes).compose());
                 this.userVotes.add(habbo.getHabboInfo().getId());
             }
@@ -57,7 +57,7 @@ public class RoomWordQuizManager {
             this.yesVotes = 0;
             this.userVotes.clear();
             this.wordQuizEnd = Emulator.getIntUnixTimestamp() + (duration / 1000);
-            this.room.sendComposer(new SimplePollStartComposer(duration, question).compose());
+            this.room.sendComposer(new QuestionMessageComposer(duration, question).compose());
         }
     }
 

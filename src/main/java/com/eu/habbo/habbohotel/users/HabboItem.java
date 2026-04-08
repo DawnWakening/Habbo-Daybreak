@@ -14,9 +14,9 @@ import com.eu.habbo.habbohotel.rooms.*;
 import com.eu.habbo.habbohotel.wired.WiredEffectType;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.messages.ServerMessage;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDanceComposer;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDataComposer;
-import com.eu.habbo.messages.outgoing.users.UpdateUserLookComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.DanceMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.users.UserChangeMessageComposer;
+import com.eu.habbo.messages.outgoing.users.FigureUpdateMessageComposer;
 import gnu.trove.set.hash.THashSet;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Pair;
@@ -309,7 +309,7 @@ public abstract class HabboItem implements Runnable, IEventTriggers {
 
         if ((this.getBaseItem().allowSit() || this.getBaseItem().allowLay()) && !roomUnit.getDanceType().equals(DanceType.NONE)) {
             roomUnit.setDanceType(DanceType.NONE);
-            room.sendComposer(new RoomUserDanceComposer(roomUnit).compose());
+            room.sendComposer(new DanceMessageComposer(roomUnit).compose());
         }
 
         if (!this.getBaseItem().getClothingOnWalk().isEmpty() && roomUnit.getPreviousLocation() != roomUnit.getGoal() && roomUnit.getGoal() == room.getLayout().getTile(this.x, this.y)) {
@@ -319,9 +319,9 @@ public abstract class HabboItem implements Runnable, IEventTriggers {
                 String[] clothingKeys = Arrays.stream(this.getBaseItem().getClothingOnWalk().split("\\.")).map(k -> k.split("-")[0]).toArray(String[]::new);
                 habbo.getHabboInfo().setLook(String.join(".", Arrays.stream(habbo.getHabboInfo().getLook().split("\\.")).filter(k -> !ArrayUtils.contains(clothingKeys, k.split("-")[0])).toArray(String[]::new)) + "." + this.getBaseItem().getClothingOnWalk());
 
-                habbo.getClient().sendResponse(new UpdateUserLookComposer(habbo));
+                habbo.getClient().sendResponse(new FigureUpdateMessageComposer(habbo));
                 if (habbo.getHabboInfo().getCurrentRoom() != null) {
-                    habbo.getHabboInfo().getCurrentRoom().sendComposer(new RoomUserDataComposer(habbo).compose());
+                    habbo.getHabboInfo().getCurrentRoom().sendComposer(new UserChangeMessageComposer(habbo).compose());
                 }
             }
         }

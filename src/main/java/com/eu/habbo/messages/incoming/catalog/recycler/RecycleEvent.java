@@ -5,12 +5,12 @@ import com.eu.habbo.habbohotel.achievements.AchievementManager;
 import com.eu.habbo.habbohotel.items.ItemManager;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.catalog.AlertPurchaseFailedComposer;
-import com.eu.habbo.messages.outgoing.catalog.RecyclerCompleteComposer;
-import com.eu.habbo.messages.outgoing.generic.alerts.HotelWillCloseInMinutesComposer;
-import com.eu.habbo.messages.outgoing.inventory.AddHabboItemComposer;
-import com.eu.habbo.messages.outgoing.inventory.InventoryRefreshComposer;
-import com.eu.habbo.messages.outgoing.inventory.RemoveHabboItemComposer;
+import com.eu.habbo.messages.outgoing.catalog.PurchaseErrorMessageComposer;
+import com.eu.habbo.messages.outgoing.catalog.RecyclerFinishedMessageComposer;
+import com.eu.habbo.messages.outgoing.generic.alerts.HotelWillCloseInMinutesMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListInvalidateMessageComposer;
+import com.eu.habbo.messages.outgoing.inventory.FurniListRemoveMessageComposer;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
 import com.eu.habbo.threading.runnables.ShutdownEmulator;
 import gnu.trove.set.hash.THashSet;
@@ -19,7 +19,7 @@ public class RecycleEvent extends MessageHandler {
     @Override
     public void handle() throws Exception {
         if (ShutdownEmulator.timestamp > 0) {
-            this.client.sendResponse(new HotelWillCloseInMinutesComposer((ShutdownEmulator.timestamp - Emulator.getIntUnixTimestamp()) / 60));
+            this.client.sendResponse(new HotelWillCloseInMinutesMessageComposer((ShutdownEmulator.timestamp - Emulator.getIntUnixTimestamp()) / 60));
             return;
         }
 
@@ -43,28 +43,28 @@ public class RecycleEvent extends MessageHandler {
             if (items.size() == count) {
                 for (HabboItem item : items) {
                     this.client.getHabbo().getInventory().getItemsComponent().removeHabboItem(item);
-                    this.client.sendResponse(new RemoveHabboItemComposer(item.getGiftAdjustedId()));
+                    this.client.sendResponse(new FurniListRemoveMessageComposer(item.getGiftAdjustedId()));
                     Emulator.getThreading().run(new QueryDeleteHabboItem(item.getId()));
                 }
             } else {
-                this.client.sendResponse(new AlertPurchaseFailedComposer(AlertPurchaseFailedComposer.SERVER_ERROR));
+                this.client.sendResponse(new PurchaseErrorMessageComposer(PurchaseErrorMessageComposer.SERVER_ERROR));
                 return;
             }
 
             HabboItem reward = Emulator.getGameEnvironment().getItemManager().handleRecycle(this.client.getHabbo(), Emulator.getGameEnvironment().getCatalogManager().getRandomRecyclerPrize().getId() + "");
             if (reward == null) {
-                this.client.sendResponse(new AlertPurchaseFailedComposer(AlertPurchaseFailedComposer.SERVER_ERROR));
+                this.client.sendResponse(new PurchaseErrorMessageComposer(PurchaseErrorMessageComposer.SERVER_ERROR));
                 return;
             }
 
-            this.client.sendResponse(new AddHabboItemComposer(reward));
+            this.client.sendResponse(new UnseenItemsMessageComposer(reward));
             this.client.getHabbo().getInventory().getItemsComponent().addItem(reward);
-            this.client.sendResponse(new RecyclerCompleteComposer(RecyclerCompleteComposer.RECYCLING_COMPLETE));
-            this.client.sendResponse(new InventoryRefreshComposer());
+            this.client.sendResponse(new RecyclerFinishedMessageComposer(RecyclerFinishedMessageComposer.RECYCLING_COMPLETE));
+            this.client.sendResponse(new FurniListInvalidateMessageComposer());
 
             AchievementManager.progressAchievement(this.client.getHabbo(), Emulator.getGameEnvironment().getAchievementManager().getAchievement("FurnimaticQuest"));
         } else {
-            this.client.sendResponse(new RecyclerCompleteComposer(RecyclerCompleteComposer.RECYCLING_CLOSED));
+            this.client.sendResponse(new RecyclerFinishedMessageComposer(RecyclerFinishedMessageComposer.RECYCLING_CLOSED));
         }
     }
 }

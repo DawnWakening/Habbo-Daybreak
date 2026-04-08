@@ -6,8 +6,8 @@ import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.users.HabboItem;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.rooms.UpdateStackHeightComposer;
-import com.eu.habbo.messages.outgoing.rooms.items.UpdateStackHeightTileHeightComposer;
+import com.eu.habbo.messages.outgoing.rooms.HeightMapUpdateMessageComposer;
+import com.eu.habbo.messages.outgoing.rooms.items.CustomStackingHeightUpdateMessageComposer;
 import gnu.trove.set.hash.THashSet;
 
 public class SetStackHelperHeightEvent extends MessageHandler {
@@ -61,8 +61,8 @@ public class SetStackHelperHeightEvent extends MessageHandler {
 
                 this.client.getHabbo().getHabboInfo().getCurrentRoom().updateItem(item);
                 this.client.getHabbo().getHabboInfo().getCurrentRoom().updateTiles(tiles);
-                this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UpdateStackHeightComposer(room, tiles).compose());
-                this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UpdateStackHeightTileHeightComposer(item, (int) ((height) * 100)).compose());
+                this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new HeightMapUpdateMessageComposer(room, tiles).compose());
+                this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new CustomStackingHeightUpdateMessageComposer(item, (int) ((height) * 100)).compose());
             }
         }
     }

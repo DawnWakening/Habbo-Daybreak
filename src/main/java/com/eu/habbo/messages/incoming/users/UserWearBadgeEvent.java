@@ -4,7 +4,7 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.users.HabboBadge;
 import com.eu.habbo.habbohotel.users.inventory.BadgesComponent;
 import com.eu.habbo.messages.incoming.MessageHandler;
-import com.eu.habbo.messages.outgoing.users.UserBadgesComposer;
+import com.eu.habbo.messages.outgoing.users.UserBadgesMessageComposer;
 
 import java.util.ArrayList;
 
@@ -36,9 +36,9 @@ public class UserWearBadgeEvent extends MessageHandler {
         }
 
         if (this.client.getHabbo().getHabboInfo().getCurrentRoom() != null) {
-            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UserBadgesComposer(updatedBadges, this.client.getHabbo().getHabboInfo().getId()).compose());
+            this.client.getHabbo().getHabboInfo().getCurrentRoom().sendComposer(new UserBadgesMessageComposer(updatedBadges, this.client.getHabbo().getHabboInfo().getId()).compose());
         } else {
-            this.client.sendResponse(new UserBadgesComposer(updatedBadges, this.client.getHabbo().getHabboInfo().getId()));
+            this.client.sendResponse(new UserBadgesMessageComposer(updatedBadges, this.client.getHabbo().getHabboInfo().getId()));
         }
     }
 }

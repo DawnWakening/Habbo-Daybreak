@@ -7,8 +7,8 @@ public class RequestFriendsEvent extends MessageHandler {
     public void handle() throws Exception {
 
 
-        //this.client.sendResponse(new FriendsComposer(this.client.getHabbo()));
+        //this.client.sendResponse(new FriendListFragmentMessageComposer(this.client.getHabbo()));
 
-        //this.client.sendResponse(new MessengerInitComposer(this.client.getHabbo()));
+        //this.client.sendResponse(new MessengerInitMessageComposer(this.client.getHabbo()));
     }
 }
