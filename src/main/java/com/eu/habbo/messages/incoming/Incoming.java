@@ -14,6 +14,7 @@ public class Incoming {
     public static final int SetClothingChangeDataMessageEvent = 924;
     public static final int SetMannequinFigureEvent = 2209;
     public static final int GetCatalogPageEvent = 412;
+    public static final int BuildersClubPlaceWallItemMessageEvent = 462;
     public static final int GetSelectedBadgesMessageEvent = 2091;
     public static final int RemoveBotFromFlatMessageEvent = 3323;
     public static final int HorseRideEvent = 1036;
@@ -55,6 +56,7 @@ public class Incoming {
     public static final int RequestRoomPropertySetEvent = 711;
     public static final int PopularRoomsSearchMessageEvent = 2758;
     public static final int GetModeratorRoomInfoMessageEvent = 707;
+    public static final int BuildersClubPlaceRoomItemMessageEvent = 1051;
     public static final int RequestFriendMessageEvent = 3157;
     public static final int RecycleItemsMessageEvent = 2771;
     public static final int GetUserFlatCatsMessageEvent = 3027; //1371;

@@ -40,6 +40,7 @@ public abstract class CatalogPage implements Comparable<CatalogPage>, ISerialize
     protected String textTwo;
     protected String textDetails;
     protected String textTeaser;
+    protected CatalogPageMode catalogType = CatalogPageMode.NORMAL;
 
     public CatalogPage() {
     }
@@ -67,6 +68,7 @@ public abstract class CatalogPage implements Comparable<CatalogPage>, ISerialize
         this.textTwo = set.getString("page_text2");
         this.textDetails = set.getString("page_text_details");
         this.textTeaser = set.getString("page_text_teaser");
+        this.catalogType = readCatalogType(set);
 
         if (!set.getString("includes").isEmpty()) {
             for (String id : set.getString("includes").split(";")) {
@@ -160,6 +162,10 @@ public abstract class CatalogPage implements Comparable<CatalogPage>, ISerialize
         return this.textTeaser;
     }
 
+    public CatalogPageMode getCatalogType() {
+        return this.catalogType;
+    }
+
     public TIntArrayList getOfferIds() {
         return this.offerIds;
     }
@@ -204,4 +210,12 @@ public abstract class CatalogPage implements Comparable<CatalogPage>, ISerialize
 
     @Override
     public abstract void serialize(ServerMessage message);
+
+    private CatalogPageMode readCatalogType(ResultSet set) {
+        try {
+            return CatalogPageMode.fromClientMode(set.getString("catalog_type"));
+        } catch (SQLException e) {
+            return CatalogPageMode.NORMAL;
+        }
+    }
 }

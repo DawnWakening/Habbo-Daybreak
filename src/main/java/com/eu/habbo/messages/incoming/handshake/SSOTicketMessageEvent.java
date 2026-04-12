@@ -134,7 +134,8 @@ public class SSOTicketMessageEvent extends MessageHandler {
                 messages.add(new AchievementsScoreMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new IsFirstLoginOfDayComposer(true).compose());
                 messages.add(new MysteryBoxKeysMessageComposer().compose());
-                messages.add(new BuildersClubSubscriptionStatusMessageComposer().compose());
+                messages.add(new BuildersClubSubscriptionStatusMessageComposer(this.client.getHabbo()).compose());
+                messages.add(new com.eu.habbo.messages.outgoing.catalog.BuildersClubFurniCountMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new CfhTopicsInitMessageComposer().compose());
                 messages.add(new FavouritesMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new GameListMessageComposer().compose());

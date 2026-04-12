@@ -2,6 +2,7 @@ package com.eu.habbo.messages.outgoing.catalog;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.catalog.CatalogPage;
+import com.eu.habbo.habbohotel.catalog.CatalogPageMode;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.ServerMessage;
@@ -16,10 +17,14 @@ public class CatalogPagesListMessageComposer extends MessageComposer {
     private static final Logger LOGGER = LoggerFactory.getLogger(CatalogPagesListMessageComposer.class);
 
     private final Habbo habbo;
-    private final String mode;
+    private final CatalogPageMode mode;
     private final boolean hasPermission;
 
     public CatalogPagesListMessageComposer(Habbo habbo, String mode) {
+        this(habbo, CatalogPageMode.fromClientMode(mode));
+    }
+
+    public CatalogPagesListMessageComposer(Habbo habbo, CatalogPageMode mode) {
         this.habbo = habbo;
         this.mode = mode;
         this.hasPermission = this.habbo.hasPermission(Permission.ACC_CATALOG_IDS);
@@ -28,7 +33,7 @@ public class CatalogPagesListMessageComposer extends MessageComposer {
     @Override
     protected ServerMessage composeInternal() {
         try {
-            List<CatalogPage> pages = Emulator.getGameEnvironment().getCatalogManager().getCatalogPages(-1, this.habbo);
+            List<CatalogPage> pages = Emulator.getGameEnvironment().getCatalogManager().getCatalogPages(-1, this.habbo, this.mode);
 
             this.response.init(Outgoing.CatalogPagesListMessageComposer);
 
@@ -45,7 +50,7 @@ public class CatalogPagesListMessageComposer extends MessageComposer {
             }
 
             this.response.appendBoolean(false);
-            this.response.appendString(this.mode);
+            this.response.appendString(this.mode.getClientMode());
 
             return this.response;
         } catch (Exception e) {
@@ -56,7 +61,7 @@ public class CatalogPagesListMessageComposer extends MessageComposer {
     }
 
     private void append(CatalogPage category) {
-        List<CatalogPage> pagesList = Emulator.getGameEnvironment().getCatalogManager().getCatalogPages(category.getId(), this.habbo);
+        List<CatalogPage> pagesList = Emulator.getGameEnvironment().getCatalogManager().getCatalogPages(category.getId(), this.habbo, this.mode);
 
         this.response.appendBoolean(category.isVisible());
         this.response.appendInt(category.getIconImage());
@@ -82,7 +87,7 @@ public class CatalogPagesListMessageComposer extends MessageComposer {
     }
 
     public String getMode() {
-        return mode;
+        return mode.getClientMode();
     }
 
     public boolean isHasPermission() {

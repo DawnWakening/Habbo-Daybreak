@@ -52,6 +52,7 @@ import com.eu.habbo.habbohotel.wired.highscores.WiredHighscoreManager;
 import com.eu.habbo.habbohotel.items.interactions.wired.triggers.*;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadItemsManagerEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
@@ -478,25 +479,33 @@ public class ItemManager {
     }
 
     public HabboItem createItem(int habboId, Item item, int limitedStack, int limitedSells, String extraData) {
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO items (user_id, item_id, extra_data, limited_data) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
-            statement.setInt(1, habboId);
-            statement.setInt(2, item.getId());
-            statement.setString(3, extraData);
-            statement.setString(4, limitedStack + ":" + limitedSells);
+        int itemId = this.allocateRegularItemId();
+        if (itemId <= 0) {
+            return null;
+        }
+
+        return this.createItem(itemId, habboId, item, limitedStack, limitedSells, extraData);
+    }
+
+    public HabboItem createItem(int id, int habboId, Item item, int limitedStack, int limitedSells, String extraData) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO items (id, user_id, item_id, extra_data, limited_data) VALUES (?, ?, ?, ?, ?)")) {
+            statement.setInt(1, id);
+            statement.setInt(2, habboId);
+            statement.setInt(3, item.getId());
+            statement.setString(4, extraData);
+            statement.setString(5, limitedStack + ":" + limitedSells);
             statement.execute();
 
-            try (ResultSet set = statement.getGeneratedKeys()) {
-                if (set.next()) {
-                    Class<? extends HabboItem> itemClass = item.getInteractionType().getType();
+            Class<? extends HabboItem> itemClass = item.getInteractionType().getType();
 
-                    if (itemClass != null) {
-                        try {
-                            return itemClass.getDeclaredConstructor(int.class, int.class, Item.class, String.class, int.class, int.class).newInstance(set.getInt(1), habboId, item, extraData, limitedStack, limitedSells);
-                        } catch (Exception e) {
-                            LOGGER.error("Caught exception", e);
-                            return new InteractionDefault(set.getInt(1), habboId, item, extraData, limitedStack, limitedSells);
-                        }
-                    }
+            if (itemClass != null) {
+                try {
+                    return itemClass.getDeclaredConstructor(int.class, int.class, Item.class, String.class, int.class, int.class)
+                            .newInstance(id, habboId, item, extraData, limitedStack, limitedSells);
+                } catch (Exception e) {
+                    LOGGER.error("Caught exception", e);
+                    return new InteractionDefault(id, habboId, item, extraData, limitedStack, limitedSells);
                 }
             }
         } catch (SQLException e) {
@@ -504,7 +513,119 @@ public class ItemManager {
         } catch (Exception e) {
             LOGGER.error("Caught exception", e);
         }
+
         return null;
+    }
+
+    public HabboItem createBuildersClubItem(int habboId, Item item, String extraData) {
+        return this.createItem(this.allocateBuildersClubItemId(), habboId, item, 0, 0, extraData);
+    }
+
+    public synchronized int allocateRegularItemId() {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                int nextId;
+
+                try (PreparedStatement select = connection.prepareStatement("SELECT next_id FROM items_item_sequence WHERE id = 1 FOR UPDATE");
+                     ResultSet set = select.executeQuery()) {
+                    if (set.next()) {
+                        nextId = set.getInt("next_id");
+                    } else {
+                        nextId = this.initializeRegularItemSequence(connection);
+                        connection.commit();
+                        return nextId;
+                    }
+                }
+
+                if (nextId >= SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START) {
+                    throw new SQLException("Regular item id sequence reached reserved Builder's Club range");
+                }
+
+                try (PreparedStatement update = connection.prepareStatement("UPDATE items_item_sequence SET next_id = ? WHERE id = 1")) {
+                    update.setInt(1, nextId + 1);
+                    update.executeUpdate();
+                }
+
+                connection.commit();
+                return nextId;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to allocate regular item id", e);
+        }
+
+        return 0;
+    }
+
+    public synchronized int allocateBuildersClubItemId() {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                int nextId = SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START;
+
+                try (PreparedStatement select = connection.prepareStatement("SELECT next_id FROM builders_club_item_sequence WHERE id = 1 FOR UPDATE");
+                     ResultSet set = select.executeQuery()) {
+                    if (set.next()) {
+                        nextId = set.getInt("next_id");
+                    } else {
+                        try (PreparedStatement insert = connection.prepareStatement("INSERT INTO builders_club_item_sequence (id, next_id) VALUES (1, ?)")) {
+                            insert.setInt(1, SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START + 1);
+                            insert.executeUpdate();
+                            connection.commit();
+                            return SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START;
+                        }
+                    }
+                }
+
+                try (PreparedStatement update = connection.prepareStatement("UPDATE builders_club_item_sequence SET next_id = ? WHERE id = 1")) {
+                    update.setInt(1, nextId + 1);
+                    update.executeUpdate();
+                }
+
+                connection.commit();
+                return nextId;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to allocate Builder's Club item id", e);
+        }
+
+        return SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START;
+    }
+
+    private int initializeRegularItemSequence(Connection connection) throws SQLException {
+        int nextId = 1;
+
+        try (PreparedStatement maxStatement = connection.prepareStatement("SELECT COALESCE(MAX(id), 0) + 1 FROM items WHERE id < ?")) {
+            maxStatement.setInt(1, SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START);
+            try (ResultSet set = maxStatement.executeQuery()) {
+                if (set.next()) {
+                    nextId = Math.max(1, set.getInt(1));
+                }
+            }
+        }
+
+        if (nextId >= SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START) {
+            throw new SQLException("Cannot initialize regular item id sequence inside reserved Builder's Club range");
+        }
+
+        try (PreparedStatement insert = connection.prepareStatement("INSERT INTO items_item_sequence (id, next_id) VALUES (1, ?)")) {
+            insert.setInt(1, nextId + 1);
+            insert.executeUpdate();
+        }
+
+        return nextId;
     }
 
     public void loadNewUserGifts() {

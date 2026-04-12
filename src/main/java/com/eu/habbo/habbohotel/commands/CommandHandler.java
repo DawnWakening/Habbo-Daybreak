@@ -230,6 +230,7 @@ public class CommandHandler {
         addCommand(new MutePetsCommand());
         addCommand(new PetInfoCommand());
         addCommand(new PickallCommand());
+        addCommand(new PickallBcCommand());
         addCommand(new PixelCommand());
         addCommand(new PluginsCommand());
         addCommand(new PointsCommand());

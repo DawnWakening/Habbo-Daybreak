@@ -53,7 +53,7 @@ public class PerkAllowancesMessageComposer extends MessageComposer {
 
         this.response.appendString("BUILDER_AT_WORK");
         this.response.appendString("");
-        this.response.appendBoolean(true);
+        this.response.appendBoolean(this.habbo.getHabboStats().hasEffectiveBuildersClub());
 
         this.response.appendString("CALL_ON_HELPERS");
         this.response.appendString("");

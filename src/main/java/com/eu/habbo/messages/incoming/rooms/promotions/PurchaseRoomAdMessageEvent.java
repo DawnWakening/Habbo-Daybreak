@@ -33,7 +33,7 @@ public class PurchaseRoomAdMessageEvent extends MessageHandler {
         if (page == null || !page.getLayout().equals("roomads"))
             return;
 
-        CatalogItem item = page.getCatalogItem(itemId);
+        CatalogItem item = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, itemId);
         if (item != null) {
             if (this.client.getHabbo().getHabboInfo().canBuy(item)) {
                 Room room = Emulator.getGameEnvironment().getRoomManager().getRoom(roomId);

@@ -24,6 +24,7 @@ import com.eu.habbo.habbohotel.users.clothingvalidation.ClothingValidationManage
 import com.eu.habbo.habbohotel.users.HabboInventory;
 import com.eu.habbo.habbohotel.users.HabboManager;
 import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionHabboClub;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.habbohotel.wired.core.WiredEngine;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
 import com.eu.habbo.habbohotel.wired.highscores.WiredHighscoreManager;
@@ -188,6 +189,18 @@ public class PluginManager {
         SubscriptionHabboClub.DISCOUNT_ENABLED = Emulator.getConfig().getBoolean("subscriptions.hc.discount.enabled", false);
         SubscriptionHabboClub.DISCOUNT_DAYS_BEFORE_END = Emulator.getConfig().getInt("subscriptions.hc.discount.days_before_end", 7);
 
+        SubscriptionBuildersClub.ENABLED = Emulator.getConfig().getBoolean("builders.club.enabled", false);
+        SubscriptionBuildersClub.FURNI_LIMIT = Emulator.getConfig().getInt("builders.club.furni.limit", 75);
+        SubscriptionBuildersClub.MAX_FURNI_LIMIT = Emulator.getConfig().getInt("builders.club.max.furni.limit", 250);
+        SubscriptionBuildersClub.BOX_FURNI_LIMIT_INCREMENT = Emulator.getConfig().getInt("builders.club.box.furni.limit.increment", 750);
+        SubscriptionBuildersClub.GRACE_SECONDS = Emulator.getConfig().getInt("builders.club.grace.seconds", 0);
+        SubscriptionBuildersClub.GROUP_ROOM_PLACEMENT_ENABLED = Emulator.getConfig().getBoolean("builders.club.furniture.placement.group.room.enabled", false);
+        SubscriptionBuildersClub.EXPIRY_ACTION = Emulator.getConfig().getValue("builders.club.expiry.action", "none");
+        SubscriptionBuildersClub.ACHIEVEMENT_NAME = Emulator.getConfig().getValue("builders.club.achievement", "BuildersClub");
+        SubscriptionBuildersClub.BUY_MEMBERSHIP_PAGE = Emulator.getConfig().getValue("builders.club.buy_membership_page", "");
+        SubscriptionBuildersClub.TRY_PAGE = Emulator.getConfig().getValue("builders.club.try_page", "");
+        CatalogManager.BUILDERS_CLUB_FURNIDATA_URL = Emulator.getConfig().getValue("builders.club.furnidata.url", "");
+
         SubscriptionHabboClub.HC_PAYDAY_STREAK.clear();
         for (String streak : Emulator.getConfig().getValue("subscriptions.hc.payday.streak", "7=5;30=10;60=15;90=20;180=25;365=30").split(Pattern.quote(";"))) {
             if(streak.contains("=")) {
@@ -215,6 +228,10 @@ public class PluginManager {
             ClothingValidationManager.VALIDATE_ON_MIMIC = false;
             ClothingValidationManager.VALIDATE_ON_MANNEQUIN = false;
             ClothingValidationManager.VALIDATE_ON_FBALLGATE = false;
+        }
+
+        if (Emulator.isReady) {
+            Emulator.getGameEnvironment().getCatalogManager().reloadBuildersClubCatalogRegistry();
         }
 
 

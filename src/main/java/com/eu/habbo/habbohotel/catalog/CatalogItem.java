@@ -46,6 +46,8 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
 
 
     private int orderNumber;
+    private String subscriptionType;
+    private int subscriptionDays;
 
 
     private HashMap<Integer, Integer> bundle;
@@ -99,6 +101,8 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
         this.haveOffer = set.getBoolean("have_offer");
         this.offerId = set.getInt("offer_id");
         this.orderNumber = set.getInt("order_number");
+        this.subscriptionType = readNullableString(set, "subscription_type");
+        this.subscriptionDays = readNullableInt(set, "subscription_days");
 
         this.bundle = new HashMap<>();
         this.loadBundle();
@@ -174,6 +178,36 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
         return this.offerId;
     }
 
+    public int getWireId() {
+        return this.offerId > 0 ? this.offerId : this.id;
+    }
+
+    public String getSubscriptionType() {
+        return this.subscriptionType;
+    }
+
+    public int getSubscriptionDays() {
+        return this.subscriptionDays;
+    }
+
+    public boolean isSubscriptionOffer() {
+        return this.subscriptionType != null && !this.subscriptionType.isBlank() && this.subscriptionDays > 0;
+    }
+
+    public boolean hasBaseItems() {
+        return !this.getBaseItems().isEmpty();
+    }
+
+    public boolean isSimpleSingleItemOffer() {
+        return this.amount == 1
+                && this.itemId != null
+                && !this.itemId.isBlank()
+                && !this.itemId.equals("0")
+                && !this.itemId.contains(";")
+                && !this.itemId.contains(":")
+                && this.getBaseItems().size() == 1;
+    }
+
     public boolean isLimited() {
         return this.limitedStack > 0;
     }
@@ -244,6 +278,10 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
     }
 
     public void loadBundle() {
+        if (this.itemId == null || this.itemId.isEmpty() || this.itemId.equals("0")) {
+            return;
+        }
+
         int intItemId;
 
         if (this.itemId.contains(";")) {
@@ -281,7 +319,7 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
 
     @Override
     public void serialize(ServerMessage message) {
-        message.appendInt(this.getId());
+        message.appendInt(this.getWireId());
         message.appendString(this.getName());
         message.appendBoolean(false);
         message.appendInt(this.getCredits());
@@ -338,6 +376,22 @@ public class CatalogItem implements ISerialize, Runnable, Comparable<CatalogItem
         message.appendBoolean(haveOffer(this));
         message.appendBoolean(false); //unknown
         message.appendString(this.name + ".png");
+    }
+
+    private static String readNullableString(ResultSet set, String column) {
+        try {
+            return set.getString(column);
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    private static int readNullableInt(ResultSet set, String column) {
+        try {
+            return set.getInt(column);
+        } catch (SQLException e) {
+            return 0;
+        }
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.eu.habbo.messages.outgoing.catalog.*;
 import com.eu.habbo.messages.outgoing.catalog.marketplace.MarketplaceConfigurationMessageComposer;
 import com.eu.habbo.messages.outgoing.generic.alerts.HabboBroadcastMessageComposer;
 import com.eu.habbo.messages.outgoing.modtool.ModeratorInitMessageComposer;
+import com.eu.habbo.messages.outgoing.unknown.BuildersClubSubscriptionStatusMessageComposer;
 import com.eu.habbo.messages.outgoing.users.PerkAllowancesMessageComposer;
 import com.eu.habbo.messages.outgoing.users.UserRightsMessageComposer;
 import com.eu.habbo.plugin.events.users.UserRankChangedEvent;
@@ -275,7 +276,8 @@ public class HabboManager {
             habbo.getHabboInfo().run();
 
             habbo.getClient().sendResponse(new CatalogPublishedMessageComposer());
-            habbo.getClient().sendResponse(new BuildersClubFurniCountMessageComposer(0));
+            habbo.getClient().sendResponse(new BuildersClubSubscriptionStatusMessageComposer(habbo));
+            habbo.getClient().sendResponse(new BuildersClubFurniCountMessageComposer(habbo));
             habbo.getClient().sendResponse(new BundleDiscountRulesetMessageComposer());
             habbo.getClient().sendResponse(new MarketplaceConfigurationMessageComposer());
             habbo.getClient().sendResponse(new GiftWrappingConfigurationMessageComposer());

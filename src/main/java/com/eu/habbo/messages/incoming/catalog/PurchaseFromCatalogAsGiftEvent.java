@@ -139,7 +139,7 @@ public class PurchaseFromCatalogAsGiftEvent extends MessageHandler {
                         return;
                     }
 
-                    CatalogItem item = page.getCatalogItem(itemId);
+                    CatalogItem item = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, itemId);
 
                     if (item == null) {
                         this.client.sendResponse(new PurchaseErrorMessageComposer(PurchaseErrorMessageComposer.SERVER_ERROR).compose());

@@ -36,6 +36,7 @@ import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.messages.outgoing.rooms.items.ObjectAddMessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.ItemAddMessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.FloorItemOnRollerComposer;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurnitureBuildheightEvent;
 import com.eu.habbo.plugin.events.furniture.FurnitureMovedEvent;
@@ -956,6 +957,47 @@ public class RoomItemManager {
         Emulator.getThreading().run(item);
     }
 
+    public void pickUpBuildersClubItem(HabboItem item, Habbo picker) {
+        if (item == null || !SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+            return;
+        }
+
+        if (Emulator.getPluginManager().isRegistered(FurniturePickedUpEvent.class, true)) {
+            FurniturePickedUpEvent event = Emulator.getPluginManager().fireEvent(new FurniturePickedUpEvent(item, picker));
+
+            if (event.isCancelled()) {
+                return;
+            }
+        }
+
+        this.removeHabboItem(item);
+        item.onPickUp(this.room);
+
+        if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
+            this.room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
+
+            THashSet<RoomTile> updatedTiles = this.room.getLayout().getTilesAt(
+                    this.room.getLayout().getTile(item.getX(), item.getY()),
+                    item.getBaseItem().getWidth(),
+                    item.getBaseItem().getLength(),
+                    item.getRotation());
+            this.room.updateTiles(updatedTiles);
+
+            for (RoomTile tile : updatedTiles) {
+                this.room.updateHabbosAt(tile.x, tile.y);
+                this.room.updateBotsAt(tile.x, tile.y);
+            }
+        } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
+            this.room.sendComposer(new ItemRemoveMessageComposer(item).compose());
+        }
+
+        Emulator.getGameEnvironment().getItemManager().deleteItem(item);
+        Habbo owner = Emulator.getGameEnvironment().getHabboManager().getHabbo(item.getUserId());
+        if (owner != null) {
+            owner.getHabboStats().invalidateBuildersClubFurniCount();
+        }
+    }
+
     /**
      * Ejects all furniture belonging to a user.
      */
@@ -980,12 +1022,25 @@ public class RoomItemManager {
         Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(userId);
 
         if (habbo != null) {
-            habbo.getInventory().getItemsComponent().addItems(items);
-            habbo.getClient().sendResponse(new UnseenItemsMessageComposer(items));
+            THashSet<HabboItem> normalItems = new THashSet<>();
+            for (HabboItem item : items) {
+                if (!SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+                    normalItems.add(item);
+                }
+            }
+
+            if (!normalItems.isEmpty()) {
+                habbo.getInventory().getItemsComponent().addItems(normalItems);
+                habbo.getClient().sendResponse(new UnseenItemsMessageComposer(normalItems));
+            }
         }
 
         for (HabboItem i : items) {
-            this.pickUpItem(i, null);
+            if (SubscriptionBuildersClub.isBuildersClubItemId(i.getId())) {
+                this.pickUpBuildersClubItem(i, null);
+            } else {
+                this.pickUpItem(i, null);
+            }
         }
     }
 
@@ -993,6 +1048,11 @@ public class RoomItemManager {
      * Ejects a single user item.
      */
     public void ejectUserItem(HabboItem item) {
+        if (SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+            this.pickUpBuildersClubItem(item, null);
+            return;
+        }
+
         this.pickUpItem(item, null);
     }
 
@@ -1034,16 +1094,74 @@ public class RoomItemManager {
 
         for (Map.Entry<Integer, THashSet<HabboItem>> entrySet : userItemsMap.entrySet()) {
             for (HabboItem i : entrySet.getValue()) {
-                this.pickUpItem(i, null);
+                if (SubscriptionBuildersClub.isBuildersClubItemId(i.getId())) {
+                    this.pickUpBuildersClubItem(i, null);
+                } else {
+                    this.pickUpItem(i, null);
+                }
             }
 
             Habbo user = Emulator.getGameEnvironment().getHabboManager().getHabbo(entrySet.getKey());
 
             if (user != null) {
-                user.getInventory().getItemsComponent().addItems(entrySet.getValue());
-                user.getClient().sendResponse(new UnseenItemsMessageComposer(entrySet.getValue()));
+                THashSet<HabboItem> normalItems = new THashSet<>();
+                for (HabboItem item : entrySet.getValue()) {
+                    if (!SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+                        normalItems.add(item);
+                    }
+                }
+
+                if (!normalItems.isEmpty()) {
+                    user.getInventory().getItemsComponent().addItems(normalItems);
+                    user.getClient().sendResponse(new UnseenItemsMessageComposer(normalItems));
+                }
             }
         }
+    }
+
+    public void pickUpBuildersClubItems(int userId, Habbo picker) {
+        THashSet<HabboItem> items = new THashSet<>();
+
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0; ) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                HabboItem item = iterator.value();
+                if (item != null && item.getUserId() == userId && SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+                    items.add(item);
+                }
+            }
+        }
+
+        for (HabboItem item : items) {
+            this.pickUpBuildersClubItem(item, picker);
+        }
+    }
+
+    public boolean hasBuildersClubItems() {
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0; ) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                if (SubscriptionBuildersClub.isBuildersClubItemId(iterator.value().getId())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // ==================== LOCKED TILES ====================

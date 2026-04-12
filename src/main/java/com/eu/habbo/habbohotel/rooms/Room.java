@@ -2256,6 +2256,18 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     this.itemManager.ejectUserFurni(userId);
   }
 
+  public void pickUpBuildersClubItems(int userId, Habbo picker) {
+    this.itemManager.pickUpBuildersClubItems(userId, picker);
+  }
+
+  public void pickUpBuildersClubItem(HabboItem item, Habbo picker) {
+    this.itemManager.pickUpBuildersClubItem(item, picker);
+  }
+
+  public boolean hasBuildersClubItems() {
+    return this.itemManager.hasBuildersClubItems();
+  }
+
   public void ejectUserItem(HabboItem item) {
     this.itemManager.ejectUserItem(item);
   }
