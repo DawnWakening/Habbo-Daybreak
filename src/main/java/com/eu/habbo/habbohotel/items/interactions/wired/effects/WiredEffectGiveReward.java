@@ -151,7 +151,7 @@ public class WiredEffectGiveReward extends InteractionWiredEffect {
         message.appendInt(this.rewardItems.size());
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         StringBuilder s = new StringBuilder();
 
         for (WiredGiveRewardItem item : this.rewardItems) {

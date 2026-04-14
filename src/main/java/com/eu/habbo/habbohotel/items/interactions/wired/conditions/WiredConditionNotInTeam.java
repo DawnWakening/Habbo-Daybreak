@@ -87,7 +87,7 @@ public class WiredConditionNotInTeam extends InteractionWiredCondition {
         message.appendInt(5);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(1);
         message.appendInt(this.teamColor.type);

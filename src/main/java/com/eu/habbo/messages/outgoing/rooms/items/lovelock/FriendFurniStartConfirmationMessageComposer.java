@@ -15,7 +15,7 @@ public class FriendFurniStartConfirmationMessageComposer extends MessageComposer
     @Override
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.FriendFurniStartConfirmationMessageComposer);
-        this.response.appendInt(this.loveLock.getId());
+        this.response.appendInt(this.loveLock.getRoomVisibleId());
         this.response.appendBoolean(true);
         return this.response;
     }

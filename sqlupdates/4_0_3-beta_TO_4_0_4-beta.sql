@@ -16,27 +16,31 @@ ALTER TABLE `users_settings`
     ADD COLUMN IF NOT EXISTS `builders_club_furni_limit` INT NOT NULL DEFAULT 0 AFTER `max_friends`,
     ADD COLUMN IF NOT EXISTS `builders_club_max_furni_limit` INT NOT NULL DEFAULT 0 AFTER `builders_club_furni_limit`;
 
-CREATE TABLE IF NOT EXISTS `builders_club_item_sequence` (
-  `id` TINYINT NOT NULL,
-  `next_id` INT NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Add BC flag column to items
+ALTER TABLE `items`
+    ADD COLUMN IF NOT EXISTS `is_builders_club` TINYINT(1) NOT NULL DEFAULT 0 AFTER `wired_data`;
 
-CREATE TABLE IF NOT EXISTS `items_item_sequence` (
-  `id` TINYINT NOT NULL,
-  `next_id` INT NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Add index for BC furni count queries (MariaDB 10.2 compatible)
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'items' AND INDEX_NAME = 'idx_items_bc');
+SET @sql_idx = IF(@idx_exists = 0, 'ALTER TABLE `items` ADD INDEX `idx_items_bc` (`user_id`, `is_builders_club`, `room_id`)', 'SELECT 1');
+PREPARE stmt_idx FROM @sql_idx;
+EXECUTE stmt_idx;
+DEALLOCATE PREPARE stmt_idx;
 
-INSERT INTO `builders_club_item_sequence` (`id`, `next_id`)
-VALUES (1, 2147418113)
-ON DUPLICATE KEY UPDATE `next_id` = `next_id`;
+-- Drop old sequence tables
+DROP TABLE IF EXISTS `builders_club_item_sequence`;
+DROP TABLE IF EXISTS `items_item_sequence`;
 
-INSERT INTO `items_item_sequence` (`id`, `next_id`)
-SELECT 1, COALESCE(MAX(`id`), 0) + 1
-FROM `items`
-WHERE `id` < 2147418112
-ON DUPLICATE KEY UPDATE `next_id` = `next_id`;
+-- Purge any old BC items (IDs in the reserved range)
+DELETE FROM `items` WHERE `id` >= 2147418112;
+
+-- Reset AUTO_INCREMENT to be safe (after purging BC items)
+-- This dynamically sets it to MAX(id) + 1
+SET @max_id = (SELECT COALESCE(MAX(`id`), 0) + 1 FROM `items` WHERE `id` < 2147418112);
+SET @sql = CONCAT('ALTER TABLE `items` AUTO_INCREMENT = ', @max_id);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT INTO `emulator_settings` (`key`, `value`) VALUES
 ('builders.club.enabled', '0'),

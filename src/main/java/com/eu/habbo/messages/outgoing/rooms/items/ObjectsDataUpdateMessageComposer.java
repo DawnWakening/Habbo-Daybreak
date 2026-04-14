@@ -20,7 +20,7 @@ public class ObjectsDataUpdateMessageComposer extends MessageComposer {
         this.response.appendInt(this.items.size());
 
         for (HabboItem item : this.items) {
-            this.response.appendInt(item.getId());
+            this.response.appendInt(item.getRoomVisibleId());
             item.serializeExtradata(this.response);
         }
 

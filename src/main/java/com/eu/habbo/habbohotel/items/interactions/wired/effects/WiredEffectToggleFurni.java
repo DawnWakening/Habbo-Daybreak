@@ -98,7 +98,7 @@ public class WiredEffectToggleFurni extends InteractionWiredEffect {
         THashSet<HabboItem> items = new THashSet<>();
 
         for (HabboItem item : this.items) {
-            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null)
+            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItemByDatabaseId(item.getId()) == null)
                 items.add(item);
         }
 
@@ -110,10 +110,10 @@ public class WiredEffectToggleFurni extends InteractionWiredEffect {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (HabboItem item : this.items) {
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
         }
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);
@@ -227,7 +227,7 @@ public class WiredEffectToggleFurni extends InteractionWiredEffect {
             JsonData data = WiredManager.getGson().fromJson(wiredData, JsonData.class);
             this.setDelay(data.delay);
             for (Integer id: data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+                HabboItem item = room.getHabboItemByDatabaseId(id);
 
                 if (item instanceof InteractionFreezeBlock || item instanceof InteractionFreezeTile || item instanceof InteractionCrackable) {
                     continue;
@@ -246,7 +246,7 @@ public class WiredEffectToggleFurni extends InteractionWiredEffect {
             if (wiredDataOld.length == 2) {
                 if (wiredDataOld[1].contains(";")) {
                     for (String s : wiredDataOld[1].split(";")) {
-                        HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                        HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                         if (item instanceof InteractionFreezeBlock || item instanceof InteractionFreezeTile || item instanceof InteractionCrackable)
                             continue;

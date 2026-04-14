@@ -15,7 +15,7 @@ public class OneWayDoorStatusMessageComposer extends MessageComposer {
     @Override
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.OneWayDoorStatusMessageComposer);
-        this.response.appendInt(this.item.getId());
+        this.response.appendInt(this.item.getRoomVisibleId());
         try {
             int state = Integer.parseInt(this.item.getExtradata());
             this.response.appendInt(state);

@@ -695,9 +695,8 @@ public class HabboStats implements Runnable {
         int count = 0;
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM items WHERE user_id = ? AND id >= ? AND room_id > 0")) {
+             PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM items WHERE user_id = ? AND is_builders_club = 1 AND room_id > 0")) {
             statement.setInt(1, this.habboInfo.getId());
-            statement.setInt(2, SubscriptionBuildersClub.BUILDERS_CLUB_ITEM_ID_START);
 
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {

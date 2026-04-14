@@ -90,7 +90,7 @@ public class SubscriptionBuildersClub extends Subscription {
         return ENABLED;
     }
 
-    public static boolean isBuildersClubItemId(int itemId) {
+    public static boolean isBuildersClubVisibleId(int itemId) {
         return itemId >= BUILDERS_CLUB_ITEM_ID_START;
     }
 
@@ -162,9 +162,8 @@ public class SubscriptionBuildersClub extends Subscription {
             }
 
             try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-                 PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE user_id = ? AND id >= ?")) {
-                statement.setInt(1, userId);
-                statement.setInt(2, BUILDERS_CLUB_ITEM_ID_START);
+                 PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE user_id = ? AND is_builders_club = 1")) {
+            statement.setInt(1, userId);
                 statement.executeUpdate();
             } catch (SQLException e) {
                 LOGGER.error("Failed to clean up Builder's Club items for user {}", userId, e);

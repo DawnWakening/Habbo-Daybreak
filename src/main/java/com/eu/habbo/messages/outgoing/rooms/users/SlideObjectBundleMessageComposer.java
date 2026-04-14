@@ -95,7 +95,7 @@ public class SlideObjectBundleMessageComposer extends MessageComposer {
         this.response.appendInt(this.newLocation.x);
         this.response.appendInt(this.newLocation.y);
         this.response.appendInt(0);
-        this.response.appendInt(this.roller == null ? 0 : this.roller.getId());
+        this.response.appendInt(this.roller == null ? 0 : this.roller.getRoomVisibleId());
         this.response.appendInt(2);
         this.response.appendInt(this.roomUnit.getId());
         this.response.appendString(this.oldZ + "");

@@ -18,7 +18,7 @@ public class CustomStackingHeightUpdateMessageComposer extends MessageComposer {
     @Override
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.CustomStackingHeightUpdateMessageComposer);
-        this.response.appendInt(this.item.getId());
+        this.response.appendInt(this.item.getRoomVisibleId());
         this.response.appendInt(this.height);
         return this.response;
     }

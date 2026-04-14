@@ -26,7 +26,7 @@ public class PickupObjectMessageEvent extends MessageHandler {
         if (item instanceof InteractionPostIt)
             return;
 
-        if (SubscriptionBuildersClub.isBuildersClubItemId(item.getId())) {
+        if (item.isBuildersClub()) {
             if (item.getUserId() == this.client.getHabbo().getHabboInfo().getId() || room.hasRights(this.client.getHabbo())) {
                 room.pickUpBuildersClubItem(item, this.client.getHabbo());
                 SubscriptionBuildersClub.pushCatalogState(this.client.getHabbo());

@@ -27,7 +27,8 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
         super(set, baseItem);
     }
 
-    public WiredConditionNotFurniTypeMatch(int id, int userId, Item item, String extradata, int limitedStack, int limitedSells) {
+    public WiredConditionNotFurniTypeMatch(int id, int userId, Item item, String extradata, int limitedStack,
+            int limitedSells) {
         super(id, userId, item, extradata, limitedStack, limitedSells);
     }
 
@@ -35,7 +36,7 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
     public boolean evaluate(WiredContext ctx) {
         this.refresh();
 
-        if(items.isEmpty())
+        if (items.isEmpty())
             return true;
 
         HabboItem triggeringItem = ctx.sourceItem().orElse(null);
@@ -56,8 +57,7 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
     public String getWiredData() {
         this.refresh();
         return WiredManager.getGson().toJson(new JsonData(
-                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())
-        ));
+                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())));
     }
 
     @Override
@@ -66,10 +66,11 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
         String wiredData = set.getString("wired_data");
 
         if (wiredData.startsWith("{")) {
-            WiredConditionFurniTypeMatch.JsonData data = WiredManager.getGson().fromJson(wiredData, WiredConditionFurniTypeMatch.JsonData.class);
+            WiredConditionFurniTypeMatch.JsonData data = WiredManager.getGson().fromJson(wiredData,
+                    WiredConditionFurniTypeMatch.JsonData.class);
 
-            for(int id : data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+            for (int id : data.itemIds) {
+                HabboItem item = room.getHabboItemByDatabaseId(id);
 
                 if (item != null) {
                     this.items.add(item);
@@ -79,7 +80,7 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
             String[] data = set.getString("wired_data").split(";");
 
             for (String s : data) {
-                HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                 if (item != null) {
                     this.items.add(item);
@@ -107,10 +108,10 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
         message.appendInt(this.items.size());
 
         for (HabboItem item : this.items)
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
 
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);
@@ -122,7 +123,8 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
     @Override
     public boolean saveData(WiredSettings settings) {
         int count = settings.getFurniIds().length;
-        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count")) return false;
+        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count"))
+            return false;
 
         this.items.clear();
 
@@ -145,7 +147,7 @@ public class WiredConditionNotFurniTypeMatch extends InteractionWiredCondition {
             items.addAll(this.items);
         } else {
             for (HabboItem item : this.items) {
-                if (room.getHabboItem(item.getId()) == null)
+                if (room.getHabboItemByDatabaseId(item.getId()) == null)
                     items.add(item);
             }
         }

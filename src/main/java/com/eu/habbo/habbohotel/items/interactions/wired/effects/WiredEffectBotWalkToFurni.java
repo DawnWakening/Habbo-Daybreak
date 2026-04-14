@@ -43,7 +43,7 @@ public class WiredEffectBotWalkToFurni extends InteractionWiredEffect {
         THashSet<HabboItem> items = new THashSet<>();
 
         for (HabboItem item : this.items) {
-            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null)
+            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItemByDatabaseId(item.getId()) == null)
                 items.add(item);
         }
 
@@ -55,10 +55,10 @@ public class WiredEffectBotWalkToFurni extends InteractionWiredEffect {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (HabboItem item : this.items)
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
 
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString(this.botName);
         message.appendInt(0);
         message.appendInt(0);
@@ -116,7 +116,7 @@ public class WiredEffectBotWalkToFurni extends InteractionWiredEffect {
         }
 
         Bot bot = bots.get(0);
-        this.items.removeIf(item -> item == null || item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null);
+        this.items.removeIf(item -> item == null || item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItemByDatabaseId(item.getId()) == null);
 
         // Bots shouldn't walk to the tile they are already standing on
         List<HabboItem> possibleItems = this.items.stream()
@@ -168,7 +168,7 @@ public class WiredEffectBotWalkToFurni extends InteractionWiredEffect {
             this.botName = data.bot_name;
 
             for(int itemId : data.items) {
-                HabboItem item = room.getHabboItem(itemId);
+                HabboItem item = room.getHabboItemByDatabaseId(itemId);
 
                 if (item != null)
                     this.items.add(item);
@@ -185,7 +185,7 @@ public class WiredEffectBotWalkToFurni extends InteractionWiredEffect {
                     this.botName = data[0];
 
                     for (int i = 1; i < data.length; i++) {
-                        HabboItem item = room.getHabboItem(Integer.parseInt(data[i]));
+                        HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(data[i]));
 
                         if (item != null)
                             this.items.add(item);

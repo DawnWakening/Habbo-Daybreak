@@ -146,7 +146,7 @@ public class WiredEffectGiveScore extends InteractionWiredEffect {
         message.appendInt(5);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(2);
         message.appendInt(this.score);

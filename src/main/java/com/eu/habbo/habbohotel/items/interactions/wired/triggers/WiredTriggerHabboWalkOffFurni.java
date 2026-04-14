@@ -63,7 +63,7 @@ public class WiredTriggerHabboWalkOffFurni extends InteractionWiredTrigger {
         if (wiredData.startsWith("{")) {
             JsonData data = WiredManager.getGson().fromJson(wiredData, JsonData.class);
             for (Integer id: data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+                HabboItem item = room.getHabboItemByDatabaseId(id);
                 if (item != null) {
                     this.items.add(item);
                 }
@@ -78,7 +78,7 @@ public class WiredTriggerHabboWalkOffFurni extends InteractionWiredTrigger {
                             continue;
 
                         try {
-                            HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                            HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                             if (item != null)
                                 this.items.add(item);
@@ -108,7 +108,7 @@ public class WiredTriggerHabboWalkOffFurni extends InteractionWiredTrigger {
             items.addAll(this.items);
         } else {
             for (HabboItem item : this.items) {
-                if (room.getHabboItem(item.getId()) == null)
+                if (room.getHabboItemByDatabaseId(item.getId()) == null)
                     items.add(item);
             }
         }
@@ -121,10 +121,10 @@ public class WiredTriggerHabboWalkOffFurni extends InteractionWiredTrigger {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (HabboItem item : this.items) {
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
         }
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);

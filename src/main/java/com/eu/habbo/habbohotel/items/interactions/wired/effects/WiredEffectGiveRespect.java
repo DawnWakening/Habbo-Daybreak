@@ -40,7 +40,7 @@ public class WiredEffectGiveRespect extends InteractionWiredEffect {
         message.appendInt(0);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString(this.respects + "");
         message.appendInt(0);
         message.appendInt(0);

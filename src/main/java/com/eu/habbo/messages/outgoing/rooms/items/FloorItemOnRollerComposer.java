@@ -51,10 +51,10 @@ public class FloorItemOnRollerComposer extends MessageComposer {
         this.response.appendInt(this.newLocation.x);
         this.response.appendInt(this.newLocation.y);
         this.response.appendInt(1);
-        this.response.appendInt(this.item.getId());
+        this.response.appendInt(this.item.getRoomVisibleId());
         this.response.appendString(Double.toString(this.oldLocation != null ? this.oldZ : this.item.getZ()));
         this.response.appendString(Double.toString(this.oldLocation != null ? this.newZ : (this.item.getZ() + this.heightOffset)));
-        this.response.appendInt(this.roller != null ? this.roller.getId() : -1);
+        this.response.appendInt(this.roller != null ? this.roller.getRoomVisibleId() : -1);
 
         if(this.oldLocation == null) {
             this.item.onMove(this.room, this.room.getLayout().getTile(this.item.getX(), this.item.getY()), this.newLocation);

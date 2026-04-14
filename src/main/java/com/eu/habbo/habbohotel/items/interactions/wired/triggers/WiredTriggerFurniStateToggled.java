@@ -68,7 +68,7 @@ public class WiredTriggerFurniStateToggled extends InteractionWiredTrigger {
         if (wiredData.startsWith("{")) {
             JsonData data = WiredManager.getGson().fromJson(wiredData, JsonData.class);
             for (Integer id: data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+                HabboItem item = room.getHabboItemByDatabaseId(id);
                 if (item != null) {
                     this.items.add(item);
                 }
@@ -79,7 +79,7 @@ public class WiredTriggerFurniStateToggled extends InteractionWiredTrigger {
 
                 if (!wiredData.split(":")[2].equals("\t")) {
                     for (String s : wiredData.split(":")[2].split(";")) {
-                        HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                        HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                         if (item != null)
                             this.items.add(item);
@@ -109,7 +109,7 @@ public class WiredTriggerFurniStateToggled extends InteractionWiredTrigger {
                 continue;
             }
 
-            if (room.getHabboItem(item.getId()) == null) {
+            if (room.getHabboItemByDatabaseId(item.getId()) == null) {
                 items.add(item);
             }
         }
@@ -122,10 +122,10 @@ public class WiredTriggerFurniStateToggled extends InteractionWiredTrigger {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (HabboItem item : this.items) {
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
         }
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);
