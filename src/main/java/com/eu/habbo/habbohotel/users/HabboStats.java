@@ -106,6 +106,8 @@ public class HabboStats implements Runnable {
     private Integer buildersClubFurniCountCache;
     private int buildersClubFurniLimit;
     private int buildersClubMaxFurniLimit;
+    private final Object buildersClubReservationLock = new Object();
+    private int inflightBuildersClubPlacements = 0;
 
     private HabboStats(ResultSet set, HabboInfo habboInfo) throws SQLException {
         this.cache = new THashMap<>(1000);
@@ -709,6 +711,42 @@ public class HabboStats implements Runnable {
 
         this.buildersClubFurniCountCache = count;
         return count;
+    }
+
+    /**
+     * Atomically checks the Builder's Club furni limit and reserves a slot for an in-flight
+     * placement. Must be paired with exactly one {@link #releaseBuildersClubSlot()} call on
+     * every code path that follows a successful reservation (both success and failure).
+     *
+     * @return true if a slot was reserved, false if the user is at/over the limit or BC is not active
+     */
+    public boolean tryReserveBuildersClubSlot() {
+        synchronized (this.buildersClubReservationLock) {
+            int limit = this.getBuildersClubFurniLimit();
+            if (limit <= 0) {
+                return false;
+            }
+
+            int effectiveCount = this.getBuildersClubFurniCount() + this.inflightBuildersClubPlacements;
+            if (effectiveCount >= limit) {
+                return false;
+            }
+
+            this.inflightBuildersClubPlacements++;
+            return true;
+        }
+    }
+
+    /**
+     * Releases a previously reserved Builder's Club placement slot. Safe to call on both
+     * success (committed to DB) and failure (rolled back) paths. Never decrements below zero.
+     */
+    public void releaseBuildersClubSlot() {
+        synchronized (this.buildersClubReservationLock) {
+            if (this.inflightBuildersClubPlacements > 0) {
+                this.inflightBuildersClubPlacements--;
+            }
+        }
     }
 
     public int getPastTimeAsBuildersClub() {

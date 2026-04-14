@@ -55,11 +55,6 @@ final class BuildersClubPlacementSupport {
             return null;
         }
 
-        if (habbo.getHabboStats().getBuildersClubFurniCount() >= habbo.getHabboStats().getBuildersClubFurniLimit()) {
-            client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.limit_reached"));
-            return null;
-        }
-
         CatalogPage page = Emulator.getGameEnvironment().getCatalogManager().getCatalogPage(pageId, CatalogPageMode.BUILDERS_CLUB);
         if (page == null || !page.isEnabled() || page.getRank() > habbo.getHabboInfo().getRank().getId()) {
             client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.invalid_page"));
@@ -75,6 +70,16 @@ final class BuildersClubPlacementSupport {
         Item baseItem = item.getBaseItems().iterator().next();
         if (baseItem.getType() != expectedType) {
             client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.invalid_type"));
+            return null;
+        }
+
+        // Atomically check the furni limit and reserve an in-flight slot. This closes the
+        // TOCTOU gap between the limit check and the DB insert: rapid concurrent placements
+        // would otherwise all pass the check before any of them committed. Must be paired
+        // with exactly one releaseBuildersClubSlot() call per successful reservation via the
+        // try/finally in the placement event handlers.
+        if (!habbo.getHabboStats().tryReserveBuildersClubSlot()) {
+            client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.limit_reached"));
             return null;
         }
 
