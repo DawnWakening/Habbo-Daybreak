@@ -593,8 +593,22 @@ public class HabboStats implements Runnable {
         return SubscriptionBuildersClub.isEnabled() && this.getBuildersClubSecondsRemaining() > 0;
     }
 
+    /**
+     * Returns true when the user is on a Builder's Club free trial — i.e. BC is enabled,
+     * free trials are enabled, they have a stored furni limit (set by setupFreeTrial), but
+     * they hold no active subscription.  Free-trial users can place items when alone in the
+     * room (the visitor-blocking check in BuildersClubPlacementSupport still applies).
+     */
+    public boolean isOnBuildersClubFreeTrial() {
+        return SubscriptionBuildersClub.isEnabled()
+                && SubscriptionBuildersClub.FREE_TRIAL_ENABLED
+                && this.getBuildersClubSubscription() == null
+                && this.getStoredBuildersClubFurniLimit() > 0;
+    }
+
     public boolean hasEffectiveBuildersClub() {
-        return SubscriptionBuildersClub.isEnabled() && this.getBuildersClubSecondsRemainingWithGrace() > 0;
+        return SubscriptionBuildersClub.isEnabled()
+                && (this.getBuildersClubSecondsRemainingWithGrace() > 0 || this.isOnBuildersClubFreeTrial());
     }
 
     public Subscription getBuildersClubSubscription() {

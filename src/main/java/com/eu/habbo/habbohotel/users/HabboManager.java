@@ -31,7 +31,7 @@ public class HabboManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HabboManager.class);
 
-    //Configuration. Loaded from database & updated accordingly.
+    // Configuration. Loaded from database & updated accordingly.
     public static String WELCOME_MESSAGE = "";
     public static boolean NAMECHANGE_ENABLED = false;
 
@@ -47,7 +47,8 @@ public class HabboManager {
 
     public static HabboInfo getOfflineHabboInfo(int id) {
         HabboInfo info = null;
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE id = ? LIMIT 1")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE id = ? LIMIT 1")) {
             statement.setInt(1, id);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
@@ -64,7 +65,9 @@ public class HabboManager {
     public static HabboInfo getOfflineHabboInfo(String username) {
         HabboInfo info = null;
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE username = ? LIMIT 1")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection
+                        .prepareStatement("SELECT * FROM users WHERE username = ? LIMIT 1")) {
             statement.setString(1, username);
 
             try (ResultSet set = statement.executeQuery()) {
@@ -107,7 +110,8 @@ public class HabboManager {
         int userId = 0;
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT id FROM users WHERE auth_ticket = ? LIMIT 1")) {
+                PreparedStatement statement = connection
+                        .prepareStatement("SELECT id FROM users WHERE auth_ticket = ? LIMIT 1")) {
             statement.setString(1, sso);
             try (ResultSet s = statement.executeQuery()) {
                 if (s.next()) {
@@ -131,9 +135,9 @@ public class HabboManager {
             return null;
         }
 
-
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE auth_ticket = ? LIMIT 1")) {
+                PreparedStatement statement = connection
+                        .prepareStatement("SELECT * FROM users WHERE auth_ticket = ? LIMIT 1")) {
             statement.setString(1, sso);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
@@ -144,7 +148,8 @@ public class HabboManager {
                     }
 
                     if (!Emulator.debugging) {
-                        try (PreparedStatement stmt = connection.prepareStatement("UPDATE users SET auth_ticket = ? WHERE id = ? LIMIT 1")) {
+                        try (PreparedStatement stmt = connection
+                                .prepareStatement("UPDATE users SET auth_ticket = ? WHERE id = ? LIMIT 1")) {
                             stmt.setString(1, "");
                             stmt.setInt(2, habbo.getHabboInfo().getId());
                             stmt.execute();
@@ -194,9 +199,7 @@ public class HabboManager {
 
     public synchronized void dispose() {
 
-
-//
-
+        //
 
         LOGGER.info("Habbo Manager -> Disposed!");
     }
@@ -204,7 +207,9 @@ public class HabboManager {
     public ArrayList<HabboInfo> getCloneAccounts(Habbo habbo, int limit) {
         ArrayList<HabboInfo> habboInfo = new ArrayList<>();
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE ip_register = ? OR ip_current = ? AND id != ? ORDER BY id DESC LIMIT ?")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement(
+                        "SELECT * FROM users WHERE ip_register = ? OR ip_current = ? AND id != ? ORDER BY id DESC LIMIT ?")) {
             statement.setString(1, habbo.getHabboInfo().getIpRegister());
             statement.setString(2, habbo.getHabboInfo().getIpLogin());
             statement.setInt(3, habbo.getHabboInfo().getId());
@@ -225,7 +230,9 @@ public class HabboManager {
     public List<Map.Entry<Integer, String>> getNameChanges(int userId, int limit) {
         List<Map.Entry<Integer, String>> nameChanges = new ArrayList<>();
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT timestamp, new_name FROM namechange_log WHERE user_id = ? ORDER by timestamp DESC LIMIT ?")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement(
+                        "SELECT timestamp, new_name FROM namechange_log WHERE user_id = ? ORDER by timestamp DESC LIMIT ?")) {
             statement.setInt(1, userId);
             statement.setInt(2, limit);
             try (ResultSet set = statement.executeQuery()) {
@@ -240,7 +247,6 @@ public class HabboManager {
         return nameChanges;
     }
 
-
     public void setRank(int userId, int rankId) throws Exception {
         Habbo habbo = this.getHabbo(userId);
 
@@ -253,7 +259,7 @@ public class HabboManager {
             if (!oldRank.getBadge().isEmpty()) {
                 habbo.deleteBadge(habbo.getInventory().getBadgesComponent().getBadge(oldRank.getBadge()));
             }
-            if(oldRank.getRoomEffect() > 0) {
+            if (oldRank.getRoomEffect() > 0) {
                 habbo.getInventory().getEffectsComponent().effects.remove(oldRank.getRoomEffect());
             }
 
@@ -263,8 +269,9 @@ public class HabboManager {
                 habbo.addBadge(newRank.getBadge());
             }
 
-            if(newRank.getRoomEffect() > 0) {
-                habbo.getInventory().getEffectsComponent().createRankEffect(habbo.getHabboInfo().getRank().getRoomEffect());
+            if (newRank.getRoomEffect() > 0) {
+                habbo.getInventory().getEffectsComponent()
+                        .createRankEffect(habbo.getHabboInfo().getRank().getRoomEffect());
             }
 
             habbo.getClient().sendResponse(new UserRightsMessageComposer(habbo));
@@ -282,9 +289,12 @@ public class HabboManager {
             habbo.getClient().sendResponse(new MarketplaceConfigurationMessageComposer());
             habbo.getClient().sendResponse(new GiftWrappingConfigurationMessageComposer());
             habbo.getClient().sendResponse(new RecyclerPrizesMessageComposer());
-            habbo.alert(Emulator.getTexts().getValue("commands.generic.cmd_give_rank.new_rank").replace("id", newRank.getName()));
+            habbo.alert(Emulator.getTexts().getValue("commands.generic.cmd_give_rank.new_rank").replace("id",
+                    newRank.getName()));
         } else {
-            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("UPDATE users SET `rank` = ? WHERE id = ? LIMIT 1")) {
+            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                    PreparedStatement statement = connection
+                            .prepareStatement("UPDATE users SET `rank` = ? WHERE id = ? LIMIT 1")) {
                 statement.setInt(1, rankId);
                 statement.setInt(2, userId);
                 statement.execute();
@@ -301,7 +311,9 @@ public class HabboManager {
         if (habbo != null) {
             habbo.giveCredits(credits);
         } else {
-            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("UPDATE users SET credits = credits + ? WHERE id = ? LIMIT 1")) {
+            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                    PreparedStatement statement = connection
+                            .prepareStatement("UPDATE users SET credits = credits + ? WHERE id = ? LIMIT 1")) {
                 statement.setInt(1, credits);
                 statement.setInt(2, userId);
                 statement.execute();

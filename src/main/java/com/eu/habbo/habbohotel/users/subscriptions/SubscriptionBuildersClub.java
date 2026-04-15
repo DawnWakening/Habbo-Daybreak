@@ -36,8 +36,12 @@ public class SubscriptionBuildersClub extends Subscription {
     public static String ACHIEVEMENT_NAME = "BuildersClub";
     public static String BUY_MEMBERSHIP_PAGE = "";
     public static String TRY_PAGE = "";
+    public static boolean FREE_TRIAL_ENABLED = true;
+    public static int FREE_TRIAL_LIMIT = 50;
+    public static int EXPIRY_WARNING_SECONDS = 86400;
 
-    public SubscriptionBuildersClub(Integer id, Integer userId, String subscriptionType, Integer timestampStart, Integer duration, Boolean active) {
+    public SubscriptionBuildersClub(Integer id, Integer userId, String subscriptionType, Integer timestampStart,
+            Integer duration, Boolean active) {
         super(id, userId, subscriptionType, timestampStart, duration, active);
     }
 
@@ -48,9 +52,10 @@ public class SubscriptionBuildersClub extends Subscription {
         progressAchievement(this.getUserId());
 
         if (habbo != null && habbo.getClient() != null) {
-            habbo.getClient().sendResponse(new NotificationDialogMessageComposer(hasPreviousBuildersClubSubscription(habbo.getHabboStats())
-                    ? BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_RENEWED.key
-                    : BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_MADE.key));
+            habbo.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(hasPreviousBuildersClubSubscription(habbo.getHabboStats())
+                            ? BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_RENEWED.key
+                            : BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_MADE.key));
             pushCatalogState(habbo);
             sendRoomLockStateBubble(habbo);
         }
@@ -63,7 +68,8 @@ public class SubscriptionBuildersClub extends Subscription {
         progressAchievement(this.getUserId());
 
         if (habbo != null && habbo.getClient() != null) {
-            habbo.getClient().sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_EXTENDED.key));
+            habbo.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_EXTENDED.key));
             pushCatalogState(habbo);
             sendRoomLockStateBubble(habbo);
         }
@@ -75,7 +81,8 @@ public class SubscriptionBuildersClub extends Subscription {
 
         Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(this.getUserId());
         if (habbo != null && habbo.getClient() != null) {
-            habbo.getClient().sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_EXPIRED.key));
+            habbo.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_EXPIRED.key));
         }
 
         applyExpiryAction(this.getUserId());
@@ -130,12 +137,14 @@ public class SubscriptionBuildersClub extends Subscription {
 
     public static void notifyBuildersClubVisitorDenied(Room room, Habbo guest) {
         if (guest != null && guest.getClient() != null) {
-            guest.getClient().sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_VISIT_DENIED_GUEST.key));
+            guest.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_VISIT_DENIED_GUEST.key));
         }
 
         Habbo owner = Emulator.getGameEnvironment().getHabboManager().getHabbo(room.getOwnerId());
         if (owner != null && owner.getClient() != null) {
-            owner.getClient().sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_VISIT_DENIED_OWNER.key));
+            owner.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_VISIT_DENIED_OWNER.key));
         }
     }
 
@@ -151,8 +160,46 @@ public class SubscriptionBuildersClub extends Subscription {
         habbo.getClient().sendResponse(new NotificationDialogMessageComposer(
                 habbo.getHabboStats().getBuildersClubSecondsRemaining() > 0
                         ? BubbleAlertKeys.BUILDERS_CLUB_ROOM_UNLOCKED.key
-                        : BubbleAlertKeys.BUILDERS_CLUB_ROOM_LOCKED.key
-        ));
+                        : BubbleAlertKeys.BUILDERS_CLUB_ROOM_LOCKED.key));
+    }
+
+    /**
+     * Sends a "membership about to expire" popup if the user has an active BC
+     * subscription with less than {@link #EXPIRY_WARNING_SECONDS} remaining.
+     * Safe to call on every login; it only fires the alert once per session.
+     */
+    public static void checkExpiryWarning(Habbo habbo) {
+        if (habbo == null || habbo.getClient() == null) {
+            return;
+        }
+
+        int remaining = habbo.getHabboStats().getBuildersClubSecondsRemaining();
+        if (remaining > 0 && remaining <= EXPIRY_WARNING_SECONDS) {
+            habbo.getClient().sendResponse(
+                    new NotificationDialogMessageComposer(BubbleAlertKeys.BUILDERS_CLUB_MEMBERSHIP_EXPIRES.key));
+        }
+    }
+
+    /**
+     * Sets up the free-trial defaults for a brand-new user.
+     * Gives them a furni limit of {@link #FREE_TRIAL_LIMIT} with no active
+     * subscription time, which puts them in "trial mode" (visitors block
+     * placement).
+     */
+    public static void setupFreeTrial(Habbo habbo) {
+        if (!FREE_TRIAL_ENABLED || habbo == null) {
+            return;
+        }
+
+        HabboStats stats = habbo.getHabboStats();
+        if (stats.getStoredBuildersClubFurniLimit() > 0) {
+            return; // already has a limit set (e.g. returning user with DB row)
+        }
+
+        stats.setBuildersClubFurniLimit(FREE_TRIAL_LIMIT);
+        Emulator.getThreading().run(stats);
+        LOGGER.info("Set up Builder's Club free trial for new user {} with limit {}",
+                habbo.getHabboInfo().getUsername(), FREE_TRIAL_LIMIT);
     }
 
     public static void applyExpiryAction(int userId) {
@@ -162,8 +209,9 @@ public class SubscriptionBuildersClub extends Subscription {
             }
 
             try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
-                 PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE user_id = ? AND is_builders_club = 1")) {
-            statement.setInt(1, userId);
+                    PreparedStatement statement = connection
+                            .prepareStatement("DELETE FROM items WHERE user_id = ? AND is_builders_club = 1")) {
+                statement.setInt(1, userId);
                 statement.executeUpdate();
             } catch (SQLException e) {
                 LOGGER.error("Failed to clean up Builder's Club items for user {}", userId, e);
@@ -196,7 +244,8 @@ public class SubscriptionBuildersClub extends Subscription {
             return;
         }
 
-        Achievement achievement = Emulator.getGameEnvironment().getAchievementManager().getAchievement(ACHIEVEMENT_NAME);
+        Achievement achievement = Emulator.getGameEnvironment().getAchievementManager()
+                .getAchievement(ACHIEVEMENT_NAME);
         if (achievement == null) {
             return;
         }

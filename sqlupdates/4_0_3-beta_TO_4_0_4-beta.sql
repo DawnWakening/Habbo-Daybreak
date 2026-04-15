@@ -13,8 +13,8 @@ ALTER TABLE `catalog_items`
     ADD COLUMN IF NOT EXISTS `subscription_days` INT NULL DEFAULT NULL AFTER `subscription_type`;
 
 ALTER TABLE `users_settings`
-    ADD COLUMN IF NOT EXISTS `builders_club_furni_limit` INT NOT NULL DEFAULT 0 AFTER `max_friends`,
-    ADD COLUMN IF NOT EXISTS `builders_club_max_furni_limit` INT NOT NULL DEFAULT 0 AFTER `builders_club_furni_limit`;
+    ADD COLUMN IF NOT EXISTS `builders_club_furni_limit` INT NOT NULL DEFAULT 50 AFTER `max_friends`,
+    ADD COLUMN IF NOT EXISTS `builders_club_max_furni_limit` INT NOT NULL DEFAULT 50 AFTER `builders_club_furni_limit`;
 
 -- Add BC flag column to items
 ALTER TABLE `items`
@@ -44,8 +44,8 @@ DEALLOCATE PREPARE stmt;
 
 INSERT INTO `emulator_settings` (`key`, `value`) VALUES
 ('builders.club.enabled', '0'),
-('builders.club.furni.limit', '0'),
-('builders.club.max.furni.limit', '0'),
+('builders.club.furni.limit', '50'),
+('builders.club.max.furni.limit', '250'),
 ('builders.club.box.furni.limit.increment', '750'),
 ('builders.club.grace.seconds', '0'),
 ('builders.club.furniture.placement.group.room.enabled', '0'),
@@ -53,7 +53,10 @@ INSERT INTO `emulator_settings` (`key`, `value`) VALUES
 ('builders.club.achievement', 'BuildersClub'),
 ('builders.club.buy_membership_page', ''),
 ('builders.club.try_page', ''),
-('builders.club.furnidata.url', '')
+('builders.club.furnidata.url', ''),
+('builders.club.free_trial.enabled', '1'),
+('builders.club.free_trial.limit', '50'),
+('builders.club.expiry.warning.seconds', '86400')
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
 
 SET FOREIGN_KEY_CHECKS = 1;
