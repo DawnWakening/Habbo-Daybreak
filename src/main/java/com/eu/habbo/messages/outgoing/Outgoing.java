@@ -114,6 +114,7 @@ public class Outgoing {
     public final static int WiredRewardResultMessageComposer = 178; // PRODUCTION-201611291003-338511768
     public final static int CatalogPageMessageComposer = 804; // PRODUCTION-201611291003-338511768
     public final static int BuildersClubFurniCountMessageComposer = 3828; // PRODUCTION-201611291003-338511768
+    public final static int BCPlacementWarningMessageComposer = 2898; // PRODUCTION-201611291003-338511768
     public final static int ChangeNameUpdateComposer = 118; // PRODUCTION-201611291003-338511768
     public final static int ObjectAddMessageComposer = 1534; // PRODUCTION-201611291003-338511768
     public final static int InfoFeedEnableMessageComposer = 3284; // PRODUCTION-201611291003-338511768

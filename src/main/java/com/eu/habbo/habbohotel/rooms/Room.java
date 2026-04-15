@@ -2279,6 +2279,10 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     return this.itemManager.hasBuildersClubItems();
   }
 
+  public boolean hasUserBuildersClubItems(int userId) {
+    return this.itemManager.hasUserBuildersClubItems(userId);
+  }
+
   public void ejectUserItem(HabboItem item) {
     this.itemManager.ejectUserItem(item);
   }

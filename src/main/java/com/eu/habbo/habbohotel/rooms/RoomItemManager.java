@@ -1263,6 +1263,27 @@ public class RoomItemManager {
         return false;
     }
 
+    public boolean hasUserBuildersClubItems(int userId) {
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0;) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                HabboItem item = iterator.value();
+                if (item.isBuildersClub() && item.getUserId() == userId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     // ==================== LOCKED TILES ====================
 
     /**
