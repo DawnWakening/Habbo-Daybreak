@@ -55,13 +55,34 @@ final class BuildersClubPlacementSupport {
             return null;
         }
 
-        CatalogPage page = Emulator.getGameEnvironment().getCatalogManager().getCatalogPage(pageId, CatalogPageMode.BUILDERS_CLUB);
+        CatalogPage page = null;
+        CatalogItem item = null;
+
+        if (pageId > 0) {
+            page = Emulator.getGameEnvironment().getCatalogManager().getCatalogPage(pageId, CatalogPageMode.BUILDERS_CLUB);
+            if (page != null) {
+                item = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, offerId);
+            }
+        }
+
+        // pageId = -1 (from infostand "Place More") — search all BC pages for the offer
+        if (page == null || item == null) {
+            for (CatalogPage candidate : Emulator.getGameEnvironment().getCatalogManager().catalogPages.valueCollection()) {
+                if (candidate == null || candidate.getCatalogType() != CatalogPageMode.BUILDERS_CLUB) continue;
+                CatalogItem found = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(candidate, offerId);
+                if (Emulator.getGameEnvironment().getCatalogManager().isBuildersClubPlaceableItem(candidate, found)) {
+                    page = candidate;
+                    item = found;
+                    break;
+                }
+            }
+        }
+
         if (page == null || !page.isEnabled() || page.getRank() > habbo.getHabboInfo().getRank().getId()) {
             client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.invalid_page"));
             return null;
         }
 
-        CatalogItem item = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, offerId);
         if (!Emulator.getGameEnvironment().getCatalogManager().isBuildersClubPlaceableItem(page, item)) {
             client.sendResponse(new NotificationDialogMessageComposer(BubbleAlertKeys.FURNITURE_PLACEMENT_ERROR.key, "builders_club.invalid_offer"));
             return null;
