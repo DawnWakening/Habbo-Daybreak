@@ -40,11 +40,12 @@ public class PickupObjectMessageEvent extends MessageHandler {
             if (room.hasRights(this.client.getHabbo())) {
                 if (this.client.getHabbo().hasPermission(Permission.ACC_ANYROOMOWNER)) {
                     item.setUserId(this.client.getHabbo().getHabboInfo().getId());
+                    room.pickUpItem(item, this.client.getHabbo());
                 } else if (this.client.getHabbo().getHabboInfo().getId() != room.getOwnerId() && item.getUserId() == room.getOwnerId()) {
                     return;
+                } else {
+                    room.ejectUserItem(item);
                 }
-
-                room.ejectUserItem(item);
             }
         }
     }
