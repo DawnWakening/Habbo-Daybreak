@@ -36,7 +36,7 @@ public class GameMessageRateLimit extends MessageToMessageDecoder<ClientMessage>
         }
 
         // If we exceeded the counter, drop the packet.
-        if (count > MAX_COUNTER) {
+        if (count >= MAX_COUNTER) {
             return;
         }
 
