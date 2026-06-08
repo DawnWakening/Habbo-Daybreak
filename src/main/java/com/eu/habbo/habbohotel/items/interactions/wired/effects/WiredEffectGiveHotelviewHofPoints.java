@@ -39,7 +39,7 @@ public class WiredEffectGiveHotelviewHofPoints extends InteractionWiredEffect {
         message.appendInt(0);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString(this.amount + "");
         message.appendInt(0);
         message.appendInt(0);

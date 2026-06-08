@@ -59,13 +59,14 @@ public class PurchaseFromCatalogEvent extends MessageHandler {
             CatalogPage page = null;
 
             if (pageId == -12345678 || pageId == -1) {
-                CatalogItem searchedItem = Emulator.getGameEnvironment().getCatalogManager().getCatalogItem(itemId);
+                CatalogItem searchedItem = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(itemId);
 
-                if (searchedItem.getOfferId() > 0) {
+                if (searchedItem != null && searchedItem.getOfferId() > 0) {
                     page = Emulator.getGameEnvironment().getCatalogManager().getCatalogPage(searchedItem.getPageId());
 
                     if(page != null) {
-                        if (page.getCatalogItem(itemId).getOfferId() <= 0) {
+                        CatalogItem pageItem = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, itemId);
+                        if (pageItem == null || pageItem.getOfferId() <= 0) {
                             page = null;
                         } else if (page.getRank() > this.client.getHabbo().getHabboInfo().getRank().getId()) {
                             page = null;
@@ -200,10 +201,15 @@ public class PurchaseFromCatalogEvent extends MessageHandler {
             CatalogItem item;
 
             if (page instanceof RecentPurchasesLayout)
-                item = this.client.getHabbo().getHabboStats().getRecentPurchases().get(itemId);
+                item = this.client.getHabbo().getHabboStats().getRecentPurchaseByWireId(itemId);
 
             else
-                item = page.getCatalogItem(itemId);
+                item = Emulator.getGameEnvironment().getCatalogManager().getCatalogItemByWireId(page, itemId);
+
+            if (item == null) {
+                this.client.sendResponse(new PurchaseErrorMessageComposer(PurchaseErrorMessageComposer.SERVER_ERROR).compose());
+                return;
+            }
             // temp patch, can a dev with better knowledge than me look into this asap pls.
             if (page instanceof  BotsLayout) {
                 if (!this.client.getHabbo().hasPermission(Permission.ACC_UNLIMITED_BOTS) && this.client.getHabbo().getInventory().getBotsComponent().getBots().size() >= BotManager.MAXIMUM_BOT_INVENTORY_SIZE) {

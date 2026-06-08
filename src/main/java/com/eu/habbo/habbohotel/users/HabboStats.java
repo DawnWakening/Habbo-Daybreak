@@ -12,6 +12,7 @@ import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.rooms.RoomTrade;
 import com.eu.habbo.habbohotel.users.cache.HabboOfferPurchase;
 import com.eu.habbo.habbohotel.users.subscriptions.Subscription;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.plugin.events.users.subscriptions.UserSubscriptionCreatedEvent;
 import com.eu.habbo.plugin.events.users.subscriptions.UserSubscriptionExtendedEvent;
 import gnu.trove.list.array.TIntArrayList;
@@ -31,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class HabboStats implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HabboStats.class);
+    private static volatile Boolean usersSettingsHasBuildersClubLimitColumns;
 
     public final TIntArrayList secretRecipes;
     public final HabboNavigatorWindowSettings navigatorWindowSettings;
@@ -101,6 +103,11 @@ public class HabboStats implements Runnable {
     public int hcGiftsClaimed;
     public int hcMessageLastModified = Emulator.getIntUnixTimestamp();
     public THashSet<Subscription> subscriptions;
+    private Integer buildersClubFurniCountCache;
+    private int buildersClubFurniLimit;
+    private int buildersClubMaxFurniLimit;
+    private final Object buildersClubReservationLock = new Object();
+    private int inflightBuildersClubPlacements = 0;
 
     private HabboStats(ResultSet set, HabboInfo habboInfo) throws SQLException {
         this.cache = new THashMap<>(1000);
@@ -155,8 +162,11 @@ public class HabboStats implements Runnable {
         this.maxRooms = set.getInt("max_rooms");
         this.lastHCPayday = set.getInt("last_hc_payday");
         this.hcGiftsClaimed = set.getInt("hc_gifts_claimed");
+        this.buildersClubFurniLimit = readOptionalInt(set, "builders_club_furni_limit", 0);
+        this.buildersClubMaxFurniLimit = readOptionalInt(set, "builders_club_max_furni_limit", this.buildersClubFurniLimit);
 
         this.nuxReward = this.nux;
+        this.buildersClubFurniCountCache = null;
 
         this.subscriptions = Emulator.getGameEnvironment().getSubscriptionManager().getSubscriptionsForUser(this.habboInfo.getId());
 
@@ -327,7 +337,11 @@ public class HabboStats implements Runnable {
         int onlineTime = Emulator.getIntUnixTimestamp() - onlineTimeLast;
 
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
-            try (PreparedStatement statement = connection.prepareStatement("UPDATE users_settings SET achievement_score = ?, respects_received = ?, respects_given = ?, daily_respect_points = ?, block_following = ?, block_friendrequests = ?, online_time = online_time + ?, guild_id = ?, daily_pet_respect_points = ?, club_expire_timestamp = ?, login_streak = ?, rent_space_id = ?, rent_space_endtime = ?, volume_system = ?, volume_furni = ?, volume_trax = ?, block_roominvites = ?, old_chat = ?, block_camera_follow = ?, chat_color = ?, hof_points = ?, block_alerts = ?, talent_track_citizenship_level = ?, talent_track_helpers_level = ?, ignore_bots = ?, ignore_pets = ?, nux = ?, mute_end_timestamp = ?, allow_name_change = ?, perk_trade = ?, can_trade = ?, `forums_post_count` = ?, ui_flags = ?, has_gotten_default_saved_searches = ?, max_friends = ?, max_rooms = ?, last_hc_payday = ?, hc_gifts_claimed = ? WHERE user_id = ? LIMIT 1")) {
+            boolean hasBuildersClubLimitColumns = hasUsersSettingsBuildersClubLimitColumns(connection);
+            String sql = "UPDATE users_settings SET achievement_score = ?, respects_received = ?, respects_given = ?, daily_respect_points = ?, block_following = ?, block_friendrequests = ?, online_time = online_time + ?, guild_id = ?, daily_pet_respect_points = ?, club_expire_timestamp = ?, login_streak = ?, rent_space_id = ?, rent_space_endtime = ?, volume_system = ?, volume_furni = ?, volume_trax = ?, block_roominvites = ?, old_chat = ?, block_camera_follow = ?, chat_color = ?, hof_points = ?, block_alerts = ?, talent_track_citizenship_level = ?, talent_track_helpers_level = ?, ignore_bots = ?, ignore_pets = ?, nux = ?, mute_end_timestamp = ?, allow_name_change = ?, perk_trade = ?, can_trade = ?, `forums_post_count` = ?, ui_flags = ?, has_gotten_default_saved_searches = ?, max_friends = ?, max_rooms = ?, last_hc_payday = ?, hc_gifts_claimed = ?"
+                    + (hasBuildersClubLimitColumns ? ", builders_club_furni_limit = ?, builders_club_max_furni_limit = ?" : "")
+                    + " WHERE user_id = ? LIMIT 1";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, this.achievementScore);
                 statement.setInt(2, this.respectPointsReceived);
                 statement.setInt(3, this.respectPointsGiven);
@@ -366,7 +380,12 @@ public class HabboStats implements Runnable {
                 statement.setInt(36, this.maxRooms);
                 statement.setInt(37, this.lastHCPayday);
                 statement.setInt(38, this.hcGiftsClaimed);
-                statement.setInt(39, this.habboInfo.getId());
+                int parameterIndex = 39;
+                if (hasBuildersClubLimitColumns) {
+                    statement.setInt(parameterIndex++, this.getStoredBuildersClubFurniLimit());
+                    statement.setInt(parameterIndex++, this.getStoredBuildersClubMaxFurniLimit());
+                }
+                statement.setInt(parameterIndex, this.habboInfo.getId());
                 
                 statement.executeUpdate();
             }
@@ -475,6 +494,22 @@ public class HabboStats implements Runnable {
         return null;
     }
 
+    public Subscription getLatestSubscription(String subscriptionType) {
+        Subscription latest = null;
+
+        for (Subscription subscription : this.subscriptions) {
+            if (!subscription.getSubscriptionType().equalsIgnoreCase(subscriptionType)) {
+                continue;
+            }
+
+            if (latest == null || subscription.getTimestampEnd() > latest.getTimestampEnd()) {
+                latest = subscription;
+            }
+        }
+
+        return latest;
+    }
+
     public boolean hasSubscription(String subscriptionType) {
         Subscription subscription = getSubscription(subscriptionType);
         return subscription != null;
@@ -554,6 +589,191 @@ public class HabboStats implements Runnable {
         return hasSubscription(Subscription.HABBO_CLUB);
     }
 
+    public boolean hasActiveBuildersClub() {
+        return SubscriptionBuildersClub.isEnabled() && this.getBuildersClubSecondsRemaining() > 0;
+    }
+
+    /**
+     * Returns true when the user is on a Builder's Club free trial — i.e. BC is enabled,
+     * free trials are enabled, they have a stored furni limit (set by setupFreeTrial), but
+     * they hold no active subscription.  Free-trial users can place items when alone in the
+     * room (the visitor-blocking check in BuildersClubPlacementSupport still applies).
+     */
+    public boolean isOnBuildersClubFreeTrial() {
+        return SubscriptionBuildersClub.isEnabled()
+                && SubscriptionBuildersClub.FREE_TRIAL_ENABLED
+                && this.getBuildersClubSubscription() == null
+                && this.getStoredBuildersClubFurniLimit() > 0;
+    }
+
+    public boolean hasEffectiveBuildersClub() {
+        return SubscriptionBuildersClub.isEnabled()
+                && (this.getBuildersClubSecondsRemainingWithGrace() > 0 || this.isOnBuildersClubFreeTrial());
+    }
+
+    public Subscription getBuildersClubSubscription() {
+        return this.getLatestSubscription(Subscription.BUILDERS_CLUB);
+    }
+
+    public int getBuildersClubSecondsRemaining() {
+        Subscription subscription = this.getBuildersClubSubscription();
+        if (subscription == null) {
+            return 0;
+        }
+
+        return Math.max(0, subscription.getRemaining());
+    }
+
+    public int getBuildersClubSecondsRemainingWithGrace() {
+        Subscription subscription = this.getBuildersClubSubscription();
+        if (subscription == null) {
+            return 0;
+        }
+
+        return Math.max(0, subscription.getRemaining() + SubscriptionBuildersClub.GRACE_SECONDS);
+    }
+
+    public int getBuildersClubFurniLimit() {
+        if (!this.hasEffectiveBuildersClub()) {
+            return 0;
+        }
+
+        return this.getStoredBuildersClubFurniLimit();
+    }
+
+    public int getBuildersClubMaxFurniLimit() {
+        if (!this.hasEffectiveBuildersClub()) {
+            return 0;
+        }
+
+        return this.getStoredBuildersClubMaxFurniLimit();
+    }
+
+    public int getStoredBuildersClubFurniLimit() {
+        return Math.max(0, this.buildersClubFurniLimit);
+    }
+
+    public int getStoredBuildersClubMaxFurniLimit() {
+        return Math.max(this.buildersClubMaxFurniLimit, this.buildersClubFurniLimit);
+    }
+
+    public void setBuildersClubFurniLimit(int furniLimit) {
+        this.buildersClubFurniLimit = Math.max(0, furniLimit);
+        this.buildersClubMaxFurniLimit = Math.max(this.buildersClubMaxFurniLimit, this.buildersClubFurniLimit);
+    }
+
+    public void setBuildersClubMaxFurniLimit(int maxFurniLimit) {
+        this.buildersClubMaxFurniLimit = Math.max(0, maxFurniLimit);
+        if (this.buildersClubMaxFurniLimit < this.buildersClubFurniLimit) {
+            this.buildersClubMaxFurniLimit = this.buildersClubFurniLimit;
+        }
+    }
+
+    public void addBuildersClubFurniLimit(int furniLimitDelta) {
+        if (furniLimitDelta <= 0) {
+            return;
+        }
+
+        this.buildersClubFurniLimit = Math.max(0, this.buildersClubFurniLimit + furniLimitDelta);
+        this.buildersClubMaxFurniLimit = Math.max(this.buildersClubMaxFurniLimit, this.buildersClubFurniLimit);
+    }
+
+    public Subscription createBuildersClubBoxSubscription(int duration) {
+        Subscription subscription = this.createSubscription(Subscription.BUILDERS_CLUB, duration);
+        if (subscription == null) {
+            return null;
+        }
+
+        this.addBuildersClubFurniLimit(SubscriptionBuildersClub.BOX_FURNI_LIMIT_INCREMENT);
+        Emulator.getThreading().run(this);
+
+        Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(this.habboInfo.getId());
+        if (habbo != null && habbo.getClient() != null) {
+            SubscriptionBuildersClub.pushCatalogState(habbo);
+        }
+
+        return subscription;
+    }
+
+    public void invalidateBuildersClubFurniCount() {
+        this.buildersClubFurniCountCache = null;
+    }
+
+    public int getBuildersClubFurniCount() {
+        if (this.buildersClubFurniCountCache == null) {
+            this.buildersClubFurniCountCache = this.refreshBuildersClubFurniCount();
+        }
+
+        return this.buildersClubFurniCountCache;
+    }
+
+    public int refreshBuildersClubFurniCount() {
+        int count = 0;
+
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM items WHERE user_id = ? AND is_builders_club = 1 AND room_id > 0")) {
+            statement.setInt(1, this.habboInfo.getId());
+
+            try (ResultSet set = statement.executeQuery()) {
+                if (set.next()) {
+                    count = set.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to refresh Builder's Club furni count for user {}", this.habboInfo.getId(), e);
+        }
+
+        this.buildersClubFurniCountCache = count;
+        return count;
+    }
+
+    /**
+     * Atomically checks the Builder's Club furni limit and reserves a slot for an in-flight
+     * placement. Must be paired with exactly one {@link #releaseBuildersClubSlot()} call on
+     * every code path that follows a successful reservation (both success and failure).
+     *
+     * @return true if a slot was reserved, false if the user is at/over the limit or BC is not active
+     */
+    public boolean tryReserveBuildersClubSlot() {
+        synchronized (this.buildersClubReservationLock) {
+            int limit = this.getBuildersClubFurniLimit();
+            if (limit <= 0) {
+                return false;
+            }
+
+            int effectiveCount = this.getBuildersClubFurniCount() + this.inflightBuildersClubPlacements;
+            if (effectiveCount >= limit) {
+                return false;
+            }
+
+            this.inflightBuildersClubPlacements++;
+            return true;
+        }
+    }
+
+    /**
+     * Releases a previously reserved Builder's Club placement slot. Safe to call on both
+     * success (committed to DB) and failure (rolled back) paths. Never decrements below zero.
+     */
+    public void releaseBuildersClubSlot() {
+        synchronized (this.buildersClubReservationLock) {
+            if (this.inflightBuildersClubPlacements > 0) {
+                this.inflightBuildersClubPlacements--;
+            }
+        }
+    }
+
+    public int getPastTimeAsBuildersClub() {
+        int pastTimeAsBuildersClub = 0;
+        for (Subscription subscription : this.subscriptions) {
+            if (subscription.getSubscriptionType().equalsIgnoreCase(Subscription.BUILDERS_CLUB)) {
+                pastTimeAsBuildersClub += subscription.getDuration() - Math.max(subscription.getRemaining(), 0);
+            }
+        }
+
+        return pastTimeAsBuildersClub;
+    }
+
     public int getPastTimeAsClub() {
         int pastTimeAsHC = 0;
         for(Subscription subs : this.subscriptions) {
@@ -584,13 +804,33 @@ public class HabboStats implements Runnable {
     }
 
     public void addPurchase(CatalogItem item) {
-        if (!this.recentPurchases.containsKey(item.getId())) {
-            this.recentPurchases.put(item.getId(), item);
+        int wireId = item.getWireId();
+        if (!this.recentPurchases.containsKey(wireId)) {
+            this.recentPurchases.put(wireId, item);
         }
     }
 
     public THashMap<Integer, CatalogItem> getRecentPurchases() {
         return this.recentPurchases;
+    }
+
+    public CatalogItem getRecentPurchaseByWireId(int wireId) {
+        CatalogItem item = this.recentPurchases.get(wireId);
+        if (item != null) {
+            return item;
+        }
+
+        for (CatalogItem recentPurchase : this.recentPurchases.values()) {
+            if (recentPurchase == null) {
+                continue;
+            }
+
+            if (recentPurchase.getWireId() == wireId || recentPurchase.getId() == wireId) {
+                return recentPurchase;
+            }
+        }
+
+        return null;
     }
 
     public void disposeRecentPurchases() {
@@ -795,5 +1035,35 @@ public class HabboStats implements Runnable {
 
     public void addHabboOfferPurchase(HabboOfferPurchase offerPurchase) {
         this.offerCache.put(offerPurchase.getOfferId(), offerPurchase);
+    }
+
+    private static int readOptionalInt(ResultSet set, String column, int fallback) {
+        try {
+            return set.getInt(column);
+        } catch (SQLException e) {
+            return fallback;
+        }
+    }
+
+    private static boolean hasUsersSettingsBuildersClubLimitColumns(Connection connection) {
+        if (usersSettingsHasBuildersClubLimitColumns != null) {
+            return usersSettingsHasBuildersClubLimitColumns;
+        }
+
+        synchronized (HabboStats.class) {
+            if (usersSettingsHasBuildersClubLimitColumns != null) {
+                return usersSettingsHasBuildersClubLimitColumns;
+            }
+
+            boolean hasColumns = false;
+            try (ResultSet set = connection.getMetaData().getColumns(connection.getCatalog(), null, "users_settings", "builders_club_furni_limit")) {
+                hasColumns = set.next();
+            } catch (SQLException e) {
+                LOGGER.warn("Failed to inspect users_settings for Builder's Club limit columns", e);
+            }
+
+            usersSettingsHasBuildersClubLimitColumns = hasColumns;
+            return hasColumns;
+        }
     }
 }

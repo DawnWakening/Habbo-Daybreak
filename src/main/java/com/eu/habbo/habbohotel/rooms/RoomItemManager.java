@@ -36,6 +36,7 @@ import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.messages.outgoing.rooms.items.ObjectAddMessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.ItemAddMessageComposer;
 import com.eu.habbo.messages.outgoing.rooms.items.FloorItemOnRollerComposer;
+
 import com.eu.habbo.plugin.Event;
 import com.eu.habbo.plugin.events.furniture.FurnitureBuildheightEvent;
 import com.eu.habbo.plugin.events.furniture.FurnitureMovedEvent;
@@ -60,6 +61,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Manages all items/furniture within a room.
@@ -80,6 +86,12 @@ public class RoomItemManager {
     // Tile cache for item lookups
     public final ConcurrentHashMap<RoomTile, THashSet<HabboItem>> tileCache;
 
+    // Builder's Club virtual ID mapping
+    private static final int BC_VISIBLE_ID_BASE = 0x7FFF0000;
+    private final ConcurrentHashMap<Integer, Integer> bcVisibleIdByRealId = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Integer> bcRealIdByVisibleId = new ConcurrentHashMap<>();
+    private final AtomicInteger nextBcOrdinal = new AtomicInteger(0);
+
     public RoomItemManager(Room room) {
         this.room = room;
         this.roomItems = TCollections.synchronizedMap(new TIntObjectHashMap<>(0));
@@ -98,8 +110,13 @@ public class RoomItemManager {
             this.roomItems.clear();
         }
 
+        // Clear BC maps before loading
+        this.bcVisibleIdByRealId.clear();
+        this.bcRealIdByVisibleId.clear();
+        this.nextBcOrdinal.set(0);
+
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT * FROM items WHERE room_id = ?")) {
+                "SELECT * FROM items WHERE room_id = ?")) {
             statement.setInt(1, this.room.getId());
             try (ResultSet set = statement.executeQuery()) {
                 while (set.next()) {
@@ -110,9 +127,33 @@ public class RoomItemManager {
             LOGGER.error("Caught SQL exception", e);
         }
 
+        // Rebuild BC visible ID mappings sorted by real ID ASC
+        List<HabboItem> bcItems = new ArrayList<>();
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+            for (int i = this.roomItems.size(); i-- > 0;) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+                if (iterator.value().isBuildersClub()) {
+                    bcItems.add(iterator.value());
+                }
+            }
+        }
+        bcItems.sort(Comparator.comparingInt(HabboItem::getId));
+        // Reset ordinal and rebuild maps in sorted order
+        this.bcVisibleIdByRealId.clear();
+        this.bcRealIdByVisibleId.clear();
+        this.nextBcOrdinal.set(0);
+        for (HabboItem bcItem : bcItems) {
+            this.assignBcVisibleId(bcItem);
+        }
+
         if (this.itemCount() > Room.MAXIMUM_FURNI) {
-            LOGGER.error("Room ID: {} has exceeded the furniture limit ({} > {}).", 
-                this.room.getId(), this.itemCount(), Room.MAXIMUM_FURNI);
+            LOGGER.error("Room ID: {} has exceeded the furniture limit ({} > {}).",
+                    this.room.getId(), this.itemCount(), Room.MAXIMUM_FURNI);
         }
     }
 
@@ -121,7 +162,7 @@ public class RoomItemManager {
      */
     public void loadWiredData(Connection connection) {
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, wired_data FROM items WHERE room_id = ? AND wired_data<>''")) {
+                "SELECT id, wired_data FROM items WHERE room_id = ? AND wired_data<>''")) {
             statement.setInt(1, this.room.getId());
 
             try (ResultSet set = statement.executeQuery()) {
@@ -142,6 +183,47 @@ public class RoomItemManager {
         } catch (Exception e) {
             LOGGER.error("Caught exception", e);
         }
+    }
+
+    /**
+     * Assigns a room-local BC virtual ID to an item.
+     */
+    public void assignBcVisibleId(HabboItem item) {
+        int ordinal = this.nextBcOrdinal.getAndIncrement();
+        int visibleId = BC_VISIBLE_ID_BASE + ordinal;
+        this.bcVisibleIdByRealId.put(item.getId(), visibleId);
+        this.bcRealIdByVisibleId.put(visibleId, item.getId());
+        item.setRoomVisibleId(visibleId);
+    }
+
+    /**
+     * Removes a BC virtual ID mapping for an item.
+     */
+    public void removeBcVisibleId(HabboItem item) {
+        Integer visibleId = this.bcVisibleIdByRealId.remove(item.getId());
+        if (visibleId != null) {
+            this.bcRealIdByVisibleId.remove(visibleId);
+        }
+        item.clearRoomVisibleId();
+    }
+
+    /**
+     * Resolves a visible ID to a real DB ID.
+     */
+    public int resolveVisibleId(int visibleId) {
+        if (visibleId >= BC_VISIBLE_ID_BASE) {
+            Integer realId = this.bcRealIdByVisibleId.get(visibleId);
+            return realId != null ? realId : visibleId;
+        }
+        return visibleId;
+    }
+
+    /**
+     * Gets an item by its client-visible ID.
+     */
+    public HabboItem getHabboItemByVisibleId(int visibleId) {
+        int realId = this.resolveVisibleId(visibleId);
+        return this.getHabboItem(realId);
     }
 
     // ==================== ITEM RETRIEVAL ====================
@@ -227,7 +309,7 @@ public class RoomItemManager {
         THashSet<HabboItem> items = new THashSet<>();
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             try {
                 iterator.advance();
             } catch (Exception e) {
@@ -249,7 +331,7 @@ public class RoomItemManager {
         THashSet<HabboItem> items = new THashSet<>();
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             try {
                 iterator.advance();
             } catch (Exception e) {
@@ -271,15 +353,14 @@ public class RoomItemManager {
         THashSet<HabboItem> items = new THashSet<>();
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             try {
                 iterator.advance();
             } catch (Exception e) {
                 break;
             }
 
-            if (iterator.value().getBaseItem().getInteractionType().getType()
-                == InteractionPostIt.class) {
+            if (iterator.value().getBaseItem().getInteractionType().getType() == InteractionPostIt.class) {
                 items.add(iterator.value());
             }
         }
@@ -336,7 +417,7 @@ public class RoomItemManager {
 
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             HabboItem item;
             try {
                 iterator.advance();
@@ -364,7 +445,7 @@ public class RoomItemManager {
             }
 
             if (!(tile.x >= item.getX() && tile.x <= item.getX() + width - 1 && tile.y >= item.getY()
-                && tile.y <= item.getY() + length - 1)) {
+                    && tile.y <= item.getY() + length - 1)) {
                 continue;
             }
 
@@ -451,8 +532,8 @@ public class RoomItemManager {
                 continue;
             }
 
-            if (highestItem != null && highestItem.getZ() + Item.getCurrentHeight(highestItem)
-                > item.getZ() + Item.getCurrentHeight(item)) {
+            if (highestItem != null && highestItem.getZ() + Item.getCurrentHeight(highestItem) > item.getZ()
+                    + Item.getCurrentHeight(item)) {
                 continue;
             }
 
@@ -478,8 +559,8 @@ public class RoomItemManager {
                     continue;
                 }
 
-                if (highestItem != null && highestItem.getZ() + Item.getCurrentHeight(highestItem)
-                    > item.getZ() + Item.getCurrentHeight(item)) {
+                if (highestItem != null && highestItem.getZ() + Item.getCurrentHeight(highestItem) > item.getZ()
+                        + Item.getCurrentHeight(item)) {
                     continue;
                 }
 
@@ -560,8 +641,8 @@ public class RoomItemManager {
                     continue;
                 }
 
-                if (lowestChair != null && lowestChair.getZ() + Item.getCurrentHeight(lowestChair)
-                    > item.getZ() + Item.getCurrentHeight(item)) {
+                if (lowestChair != null && lowestChair.getZ() + Item.getCurrentHeight(lowestChair) > item.getZ()
+                        + Item.getCurrentHeight(item)) {
                     continue;
                 }
 
@@ -601,14 +682,19 @@ public class RoomItemManager {
                 if (habbo != null) {
                     this.furniOwnerNames.put(item.getUserId(), habbo.getUsername());
                 } else {
-                    LOGGER.error("Failed to find username for item (ID: {}, UserID: {})", 
-                        item.getId(), item.getUserId());
+                    LOGGER.error("Failed to find username for item (ID: {}, UserID: {})",
+                            item.getId(), item.getUserId());
                 }
             }
         }
 
         // Register with special types
         this.registerItemWithSpecialTypes(item);
+
+        // Assign BC visible ID if this is a Builder's Club item
+        if (item.isBuildersClub()) {
+            this.assignBcVisibleId(item);
+        }
     }
 
     /**
@@ -619,11 +705,12 @@ public class RoomItemManager {
         if (specialTypes == null) {
             return;
         }
-        
+
         boolean isWiredItem = false;
 
         synchronized (specialTypes) {
-            // Register with tick service for time-based wired triggers (new 50ms tick system)
+            // Register with tick service for time-based wired triggers (new 50ms tick
+            // system)
             // This replaces ICycleable for wired items
             if (item instanceof WiredTickable) {
                 WiredManager.registerTickable(this.room, (WiredTickable) item);
@@ -668,29 +755,29 @@ public class RoomItemManager {
             } else if (item instanceof InteractionPetTree) {
                 specialTypes.addPetTree((InteractionPetTree) item);
             } else if (item instanceof InteractionMoodLight ||
-                       item instanceof InteractionPyramid ||
-                       item instanceof InteractionMusicDisc ||
-                       item instanceof InteractionBattleBanzaiSphere ||
-                       item instanceof InteractionTalkingFurniture ||
-                       item instanceof InteractionWater ||
-                       item instanceof InteractionWaterItem ||
-                       item instanceof InteractionMuteArea ||
-                       item instanceof InteractionBuildArea ||
-                       item instanceof InteractionTagPole ||
-                       item instanceof InteractionTagField ||
-                       item instanceof InteractionJukeBox ||
-                       item instanceof InteractionPetBreedingNest ||
-                       item instanceof InteractionBlackHole ||
-                       item instanceof InteractionWiredHighscore ||
-                       item instanceof InteractionStickyPole ||
-                       item instanceof WiredBlob ||
-                       item instanceof InteractionTent ||
-                       item instanceof InteractionSnowboardSlope ||
-                       item instanceof InteractionFireworks) {
+                    item instanceof InteractionPyramid ||
+                    item instanceof InteractionMusicDisc ||
+                    item instanceof InteractionBattleBanzaiSphere ||
+                    item instanceof InteractionTalkingFurniture ||
+                    item instanceof InteractionWater ||
+                    item instanceof InteractionWaterItem ||
+                    item instanceof InteractionMuteArea ||
+                    item instanceof InteractionBuildArea ||
+                    item instanceof InteractionTagPole ||
+                    item instanceof InteractionTagField ||
+                    item instanceof InteractionJukeBox ||
+                    item instanceof InteractionPetBreedingNest ||
+                    item instanceof InteractionBlackHole ||
+                    item instanceof InteractionWiredHighscore ||
+                    item instanceof InteractionStickyPole ||
+                    item instanceof WiredBlob ||
+                    item instanceof InteractionTent ||
+                    item instanceof InteractionSnowboardSlope ||
+                    item instanceof InteractionFireworks) {
                 specialTypes.addUndefined(item);
             }
         }
-        
+
         // Invalidate wired cache when wired items are added
         if (isWiredItem) {
             WiredManager.invalidateRoom(this.room);
@@ -710,6 +797,11 @@ public class RoomItemManager {
     public void removeHabboItem(HabboItem item) {
         if (item == null) {
             return;
+        }
+
+        // Remove BC visible ID mapping if this is a Builder's Club item
+        if (item.isBuildersClub()) {
+            this.removeBcVisibleId(item);
         }
 
         HabboItem i;
@@ -744,10 +836,11 @@ public class RoomItemManager {
         if (specialTypes == null) {
             return;
         }
-        
+
         boolean isWiredItem = false;
 
-        // Unregister from tick service for time-based wired triggers (new 50ms tick system)
+        // Unregister from tick service for time-based wired triggers (new 50ms tick
+        // system)
         if (item instanceof WiredTickable) {
             WiredManager.unregisterTickable(this.room, (WiredTickable) item);
         }
@@ -791,26 +884,26 @@ public class RoomItemManager {
         } else if (item instanceof InteractionPetTree) {
             specialTypes.removePetTree((InteractionPetTree) item);
         } else if (item instanceof InteractionMoodLight ||
-                   item instanceof InteractionPyramid ||
-                   item instanceof InteractionMusicDisc ||
-                   item instanceof InteractionBattleBanzaiSphere ||
-                   item instanceof InteractionTalkingFurniture ||
-                   item instanceof InteractionWaterItem ||
-                   item instanceof InteractionWater ||
-                   item instanceof InteractionMuteArea ||
-                   item instanceof InteractionTagPole ||
-                   item instanceof InteractionTagField ||
-                   item instanceof InteractionJukeBox ||
-                   item instanceof InteractionPetBreedingNest ||
-                   item instanceof InteractionBlackHole ||
-                   item instanceof InteractionWiredHighscore ||
-                   item instanceof InteractionStickyPole ||
-                   item instanceof WiredBlob ||
-                   item instanceof InteractionTent ||
-                   item instanceof InteractionSnowboardSlope) {
+                item instanceof InteractionPyramid ||
+                item instanceof InteractionMusicDisc ||
+                item instanceof InteractionBattleBanzaiSphere ||
+                item instanceof InteractionTalkingFurniture ||
+                item instanceof InteractionWaterItem ||
+                item instanceof InteractionWater ||
+                item instanceof InteractionMuteArea ||
+                item instanceof InteractionTagPole ||
+                item instanceof InteractionTagField ||
+                item instanceof InteractionJukeBox ||
+                item instanceof InteractionPetBreedingNest ||
+                item instanceof InteractionBlackHole ||
+                item instanceof InteractionWiredHighscore ||
+                item instanceof InteractionStickyPole ||
+                item instanceof WiredBlob ||
+                item instanceof InteractionTent ||
+                item instanceof InteractionSnowboardSlope) {
             specialTypes.removeUndefined(item);
         }
-        
+
         // Invalidate wired cache when wired items are removed
         if (isWiredItem) {
             WiredManager.invalidateRoom(this.room);
@@ -829,9 +922,9 @@ public class RoomItemManager {
                     if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
                         this.room.sendComposer(new ObjectUpdateMessageComposer(item).compose());
                         this.room.updateTiles(this.room.getLayout()
-                            .getTilesAt(this.room.getLayout().getTile(item.getX(), item.getY()),
-                                item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
-                                item.getRotation()));
+                                .getTilesAt(this.room.getLayout().getTile(item.getX(), item.getY()),
+                                        item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
+                                        item.getRotation()));
                     } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
                         this.room.sendComposer(new ItemUpdateMessageComposer(item).compose());
                     }
@@ -856,9 +949,9 @@ public class RoomItemManager {
             }
 
             this.room.updateTiles(this.room.getLayout()
-                .getTilesAt(this.room.getLayout().getTile(item.getX(), item.getY()),
-                    item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
-                    item.getRotation()));
+                    .getTilesAt(this.room.getLayout().getTile(item.getX(), item.getY()),
+                            item.getBaseItem().getWidth(), item.getBaseItem().getLength(),
+                            item.getRotation()));
 
             if (item instanceof InteractionMultiHeight) {
                 ((InteractionMultiHeight) item).updateUnitsOnItem(this.room);
@@ -923,11 +1016,18 @@ public class RoomItemManager {
 
         if (Emulator.getPluginManager().isRegistered(FurniturePickedUpEvent.class, true)) {
             FurniturePickedUpEvent event = Emulator.getPluginManager()
-                .fireEvent(new FurniturePickedUpEvent(item, picker));
+                    .fireEvent(new FurniturePickedUpEvent(item, picker));
 
             if (event.isCancelled()) {
                 return;
             }
+        }
+
+        // Send removal packet BEFORE removing from room, so visible ID is still valid
+        if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
+            this.room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
+        } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
+            this.room.sendComposer(new ItemRemoveMessageComposer(item).compose());
         }
 
         this.removeHabboItem(item);
@@ -936,24 +1036,65 @@ public class RoomItemManager {
         item.needsUpdate(true);
 
         if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
-            this.room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
-
             THashSet<RoomTile> updatedTiles = this.room.getLayout().getTilesAt(
-                this.room.getLayout().getTile(item.getX(), item.getY()),
-                item.getBaseItem().getWidth(),
-                item.getBaseItem().getLength(),
-                item.getRotation());
+                    this.room.getLayout().getTile(item.getX(), item.getY()),
+                    item.getBaseItem().getWidth(),
+                    item.getBaseItem().getLength(),
+                    item.getRotation());
             this.room.updateTiles(updatedTiles);
 
             for (RoomTile tile : updatedTiles) {
                 this.room.updateHabbosAt(tile.x, tile.y);
                 this.room.updateBotsAt(tile.x, tile.y);
             }
+        }
+
+        Emulator.getThreading().run(item);
+    }
+
+    public void pickUpBuildersClubItem(HabboItem item, Habbo picker) {
+        if (item == null || !item.isBuildersClub()) {
+            return;
+        }
+
+        if (Emulator.getPluginManager().isRegistered(FurniturePickedUpEvent.class, true)) {
+            FurniturePickedUpEvent event = Emulator.getPluginManager()
+                    .fireEvent(new FurniturePickedUpEvent(item, picker));
+
+            if (event.isCancelled()) {
+                return;
+            }
+        }
+
+        // Send removal packet BEFORE removing from room, so visible ID is still valid
+        if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
+            this.room.sendComposer(new ObjectRemoveMessageComposer(item).compose());
         } else if (item.getBaseItem().getType() == FurnitureType.WALL) {
             this.room.sendComposer(new ItemRemoveMessageComposer(item).compose());
         }
 
-        Emulator.getThreading().run(item);
+        this.removeHabboItem(item);
+        item.onPickUp(this.room);
+
+        if (item.getBaseItem().getType() == FurnitureType.FLOOR) {
+            THashSet<RoomTile> updatedTiles = this.room.getLayout().getTilesAt(
+                    this.room.getLayout().getTile(item.getX(), item.getY()),
+                    item.getBaseItem().getWidth(),
+                    item.getBaseItem().getLength(),
+                    item.getRotation());
+            this.room.updateTiles(updatedTiles);
+
+            for (RoomTile tile : updatedTiles) {
+                this.room.updateHabbosAt(tile.x, tile.y);
+                this.room.updateBotsAt(tile.x, tile.y);
+            }
+        }
+
+        Emulator.getGameEnvironment().getItemManager().deleteItem(item);
+        Habbo owner = Emulator.getGameEnvironment().getHabboManager().getHabbo(item.getUserId());
+        if (owner != null) {
+            owner.getHabboStats().invalidateBuildersClubFurniCount();
+        }
     }
 
     /**
@@ -964,7 +1105,7 @@ public class RoomItemManager {
 
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             try {
                 iterator.advance();
             } catch (Exception e) {
@@ -980,12 +1121,25 @@ public class RoomItemManager {
         Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(userId);
 
         if (habbo != null) {
-            habbo.getInventory().getItemsComponent().addItems(items);
-            habbo.getClient().sendResponse(new UnseenItemsMessageComposer(items));
+            THashSet<HabboItem> normalItems = new THashSet<>();
+            for (HabboItem item : items) {
+                if (!item.isBuildersClub()) {
+                    normalItems.add(item);
+                }
+            }
+
+            if (!normalItems.isEmpty()) {
+                habbo.getInventory().getItemsComponent().addItems(normalItems);
+                habbo.getClient().sendResponse(new UnseenItemsMessageComposer(normalItems));
+            }
         }
 
         for (HabboItem i : items) {
-            this.pickUpItem(i, null);
+            if (i.isBuildersClub()) {
+                this.pickUpBuildersClubItem(i, null);
+            } else {
+                this.pickUpItem(i, null);
+            }
         }
     }
 
@@ -993,6 +1147,11 @@ public class RoomItemManager {
      * Ejects a single user item.
      */
     public void ejectUserItem(HabboItem item) {
+        if (item.isBuildersClub()) {
+            this.pickUpBuildersClubItem(item, null);
+            return;
+        }
+
         this.pickUpItem(item, null);
     }
 
@@ -1012,7 +1171,7 @@ public class RoomItemManager {
         synchronized (this.roomItems) {
             TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-            for (int i = this.roomItems.size(); i-- > 0; ) {
+            for (int i = this.roomItems.size(); i-- > 0;) {
                 try {
                     iterator.advance();
                 } catch (Exception e) {
@@ -1028,22 +1187,101 @@ public class RoomItemManager {
                 }
 
                 userItemsMap.computeIfAbsent(iterator.value().getUserId(), k -> new THashSet<>())
-                    .add(iterator.value());
+                        .add(iterator.value());
             }
         }
 
         for (Map.Entry<Integer, THashSet<HabboItem>> entrySet : userItemsMap.entrySet()) {
             for (HabboItem i : entrySet.getValue()) {
-                this.pickUpItem(i, null);
+                if (i.isBuildersClub()) {
+                    this.pickUpBuildersClubItem(i, null);
+                } else {
+                    this.pickUpItem(i, null);
+                }
             }
 
             Habbo user = Emulator.getGameEnvironment().getHabboManager().getHabbo(entrySet.getKey());
 
             if (user != null) {
-                user.getInventory().getItemsComponent().addItems(entrySet.getValue());
-                user.getClient().sendResponse(new UnseenItemsMessageComposer(entrySet.getValue()));
+                THashSet<HabboItem> normalItems = new THashSet<>();
+                for (HabboItem item : entrySet.getValue()) {
+                    if (!item.isBuildersClub()) {
+                        normalItems.add(item);
+                    }
+                }
+
+                if (!normalItems.isEmpty()) {
+                    user.getInventory().getItemsComponent().addItems(normalItems);
+                    user.getClient().sendResponse(new UnseenItemsMessageComposer(normalItems));
+                }
             }
         }
+    }
+
+    public void pickUpBuildersClubItems(int userId, Habbo picker) {
+        THashSet<HabboItem> items = new THashSet<>();
+
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0;) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                HabboItem item = iterator.value();
+                if (item != null && item.getUserId() == userId && item.isBuildersClub()) {
+                    items.add(item);
+                }
+            }
+        }
+
+        for (HabboItem item : items) {
+            this.pickUpBuildersClubItem(item, picker);
+        }
+    }
+
+    public boolean hasBuildersClubItems() {
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0;) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                if (iterator.value().isBuildersClub()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public boolean hasUserBuildersClubItems(int userId) {
+        synchronized (this.roomItems) {
+            TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
+
+            for (int i = this.roomItems.size(); i-- > 0;) {
+                try {
+                    iterator.advance();
+                } catch (Exception e) {
+                    break;
+                }
+
+                HabboItem item = iterator.value();
+                if (item.isBuildersClub() && item.getUserId() == userId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // ==================== LOCKED TILES ====================
@@ -1056,7 +1294,7 @@ public class RoomItemManager {
 
         TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-        for (int i = this.roomItems.size(); i-- > 0; ) {
+        for (int i = this.roomItems.size(); i-- > 0;) {
             HabboItem item;
             try {
                 iterator.advance();
@@ -1082,7 +1320,7 @@ public class RoomItemManager {
                     for (short y = 0; y < item.getBaseItem().getLength(); y++) {
                         for (short x = 0; x < item.getBaseItem().getWidth(); x++) {
                             RoomTile tile = this.room.getLayout().getTile(
-                                (short) (item.getX() + x), (short) (item.getY() + y));
+                                    (short) (item.getX() + x), (short) (item.getY() + y));
 
                             if (tile != null) {
                                 lockedTiles.add(tile);
@@ -1093,7 +1331,7 @@ public class RoomItemManager {
                     for (short y = 0; y < item.getBaseItem().getWidth(); y++) {
                         for (short x = 0; x < item.getBaseItem().getLength(); x++) {
                             RoomTile tile = this.room.getLayout().getTile(
-                                (short) (item.getX() + x), (short) (item.getY() + y));
+                                    (short) (item.getX() + x), (short) (item.getY() + y));
 
                             if (tile != null) {
                                 lockedTiles.add(tile);
@@ -1116,7 +1354,7 @@ public class RoomItemManager {
         synchronized (this.roomItems) {
             TIntObjectIterator<HabboItem> iterator = this.roomItems.iterator();
 
-            for (int i = this.roomItems.size(); i-- > 0; ) {
+            for (int i = this.roomItems.size(); i-- > 0;) {
                 try {
                     iterator.advance();
 
@@ -1184,8 +1422,9 @@ public class RoomItemManager {
 
         rotation %= 8;
         if (this.room.hasRights(habbo) || this.room.getGuildRightLevel(habbo)
-            .isEqualOrGreaterThan(RoomRightLevels.GUILD_RIGHTS) || habbo.hasPermission(
-            Permission.ACC_MOVEROTATE)) {
+                .isEqualOrGreaterThan(RoomRightLevels.GUILD_RIGHTS)
+                || habbo.hasPermission(
+                        Permission.ACC_MOVEROTATE)) {
             return FurnitureMovementError.NONE;
         }
 
@@ -1196,8 +1435,8 @@ public class RoomItemManager {
                 if (!RoomLayout.squareInSquare(RoomLayout.getRectangle(rentSpace.getX(), rentSpace.getY(),
                         rentSpace.getBaseItem().getWidth(), rentSpace.getBaseItem().getLength(),
                         rentSpace.getRotation()),
-                    RoomLayout.getRectangle(tile.x, tile.y, item.getBaseItem().getWidth(),
-                        item.getBaseItem().getLength(), rotation))) {
+                        RoomLayout.getRectangle(tile.x, tile.y, item.getBaseItem().getWidth(),
+                                item.getBaseItem().getLength(), rotation))) {
                     return FurnitureMovementError.NO_RIGHTS;
                 } else {
                     return FurnitureMovementError.NONE;
@@ -1207,7 +1446,7 @@ public class RoomItemManager {
 
         for (HabboItem area : this.room.getRoomSpecialTypes().getItemsOfType(InteractionBuildArea.class)) {
             if (((InteractionBuildArea) area).inSquare(tile) && ((InteractionBuildArea) area).isBuilder(
-                habbo.getHabboInfo().getUsername())) {
+                    habbo.getHabboInfo().getUsername())) {
                 return FurnitureMovementError.NONE;
             }
         }
@@ -1236,14 +1475,14 @@ public class RoomItemManager {
         }
 
         THashSet<RoomTile> occupiedTiles = layout.getTilesAt(tile, item.getBaseItem().getWidth(),
-            item.getBaseItem().getLength(), rotation);
+                item.getBaseItem().getLength(), rotation);
         for (RoomTile t : occupiedTiles) {
             if (t.state == RoomTileState.INVALID) {
                 return FurnitureMovementError.INVALID_MOVE;
             }
-            if (!Emulator.getConfig().getBoolean("wired.place.under", false) || (
-                Emulator.getConfig().getBoolean("wired.place.under", false) && !item.isWalkable()
-                    && !item.getBaseItem().allowSit() && !item.getBaseItem().allowLay())) {
+            if (!Emulator.getConfig().getBoolean("wired.place.under", false)
+                    || (Emulator.getConfig().getBoolean("wired.place.under", false) && !item.isWalkable()
+                            && !item.getBaseItem().allowSit() && !item.getBaseItem().allowLay())) {
                 if (checkForUnits && this.room.hasHabbosAt(t.x, t.y)) {
                     return FurnitureMovementError.TILE_HAS_HABBOS;
                 }
@@ -1280,7 +1519,7 @@ public class RoomItemManager {
         boolean pluginHelper = false;
         if (Emulator.getPluginManager().isRegistered(FurniturePlacedEvent.class, true)) {
             FurniturePlacedEvent event = Emulator.getPluginManager()
-                .fireEvent(new FurniturePlacedEvent(item, owner, tile));
+                    .fireEvent(new FurniturePlacedEvent(item, owner, tile));
 
             if (event.isCancelled()) {
                 return FurnitureMovementError.CANCEL_PLUGIN_PLACE;
@@ -1291,7 +1530,7 @@ public class RoomItemManager {
 
         RoomLayout layout = this.room.getLayout();
         THashSet<RoomTile> occupiedTiles = layout.getTilesAt(tile, item.getBaseItem().getWidth(),
-            item.getBaseItem().getLength(), rotation);
+                item.getBaseItem().getLength(), rotation);
 
         FurnitureMovementError fits = furnitureFitsAt(tile, item, rotation);
 
@@ -1310,7 +1549,7 @@ public class RoomItemManager {
 
         if (Emulator.getPluginManager().isRegistered(FurnitureBuildheightEvent.class, true)) {
             FurnitureBuildheightEvent event = Emulator.getPluginManager()
-                .fireEvent(new FurnitureBuildheightEvent(item, owner, 0.00, height));
+                    .fireEvent(new FurnitureBuildheightEvent(item, owner, 0.00, height));
             if (event.hasChangedHeight()) {
                 height = layout.getHeightAtSquare(tile.x, tile.y) + event.getUpdatedHeight();
             }
@@ -1330,7 +1569,7 @@ public class RoomItemManager {
         item.onPlace(this.room);
         this.room.updateTiles(occupiedTiles);
         this.room.sendComposer(
-            new ObjectAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
+                new ObjectAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
 
         for (RoomTile t : occupiedTiles) {
             this.room.updateHabbosAt(t.x, t.y);
@@ -1346,7 +1585,7 @@ public class RoomItemManager {
      */
     public FurnitureMovementError placeWallFurniAt(HabboItem item, String wallPosition, Habbo owner) {
         if (!(this.room.hasRights(owner) || this.room.getGuildRightLevel(owner)
-            .isEqualOrGreaterThan(RoomRightLevels.GUILD_RIGHTS))) {
+                .isEqualOrGreaterThan(RoomRightLevels.GUILD_RIGHTS))) {
             return FurnitureMovementError.NO_RIGHTS;
         }
 
@@ -1364,7 +1603,7 @@ public class RoomItemManager {
             this.furniOwnerNames.put(item.getUserId(), owner.getHabboInfo().getUsername());
         }
         this.room.sendComposer(
-            new ItemAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
+                new ItemAddMessageComposer(item, this.getFurniOwnerName(item.getUserId())).compose());
         item.needsUpdate(true);
         this.addHabboItem(item);
         item.setRoomId(this.room.getId());
@@ -1383,21 +1622,23 @@ public class RoomItemManager {
     /**
      * Moves furniture to a new position with send updates option.
      */
-    public FurnitureMovementError moveFurniTo(HabboItem item, RoomTile tile, int rotation, Habbo actor, boolean sendUpdates) {
+    public FurnitureMovementError moveFurniTo(HabboItem item, RoomTile tile, int rotation, Habbo actor,
+            boolean sendUpdates) {
         return moveFurniTo(item, tile, rotation, actor, sendUpdates, true);
     }
 
     /**
      * Moves furniture to a new position with full options.
      */
-    public FurnitureMovementError moveFurniTo(HabboItem item, RoomTile tile, int rotation, Habbo actor, boolean sendUpdates, boolean checkForUnits) {
+    public FurnitureMovementError moveFurniTo(HabboItem item, RoomTile tile, int rotation, Habbo actor,
+            boolean sendUpdates, boolean checkForUnits) {
         RoomLayout layout = this.room.getLayout();
         RoomTile oldLocation = layout.getTile(item.getX(), item.getY());
 
         boolean pluginHelper = false;
         if (Emulator.getPluginManager().isRegistered(FurnitureMovedEvent.class, true)) {
             FurnitureMovedEvent event = Emulator.getPluginManager()
-                .fireEvent(new FurnitureMovedEvent(item, actor, oldLocation, tile));
+                    .fireEvent(new FurnitureMovedEvent(item, actor, oldLocation, tile));
             if (event.isCancelled()) {
                 return FurnitureMovementError.CANCEL_PLUGIN_MOVE;
             }
@@ -1407,13 +1648,13 @@ public class RoomItemManager {
         boolean magicTile = item instanceof InteractionStackHelper || item instanceof InteractionTileWalkMagic;
 
         java.util.Optional<HabboItem> stackHelper = this.getItemsAt(tile).stream()
-            .filter(i -> i instanceof InteractionStackHelper).findAny();
+                .filter(i -> i instanceof InteractionStackHelper).findAny();
 
         // Check if can be placed at new position
         THashSet<RoomTile> occupiedTiles = layout.getTilesAt(tile, item.getBaseItem().getWidth(),
-            item.getBaseItem().getLength(), rotation);
+                item.getBaseItem().getLength(), rotation);
         THashSet<RoomTile> newOccupiedTiles = layout.getTilesAt(tile,
-            item.getBaseItem().getWidth(), item.getBaseItem().getLength(), rotation);
+                item.getBaseItem().getWidth(), item.getBaseItem().getLength(), rotation);
 
         HabboItem topItem = this.getTopItemAt(occupiedTiles, null);
 
@@ -1421,16 +1662,16 @@ public class RoomItemManager {
             if (oldLocation != tile) {
                 for (RoomTile t : occupiedTiles) {
                     HabboItem tileTopItem = this.getTopItemAt(t.x, t.y);
-                    if (!magicTile && ((tileTopItem != null && tileTopItem != item ? (
-                        t.state.equals(RoomTileState.INVALID) || !t.getAllowStack()
-                            || !tileTopItem.getBaseItem().allowStack())
-                        : this.room.calculateTileState(t, item).equals(RoomTileState.INVALID)))) {
+                    if (!magicTile && ((tileTopItem != null && tileTopItem != item
+                            ? (t.state.equals(RoomTileState.INVALID) || !t.getAllowStack()
+                                    || !tileTopItem.getBaseItem().allowStack())
+                            : this.room.calculateTileState(t, item).equals(RoomTileState.INVALID)))) {
                         return FurnitureMovementError.CANT_STACK;
                     }
 
-                    if (!Emulator.getConfig().getBoolean("wired.place.under", false) || (
-                        Emulator.getConfig().getBoolean("wired.place.under", false) && !item.isWalkable()
-                            && !item.getBaseItem().allowSit() && !item.getBaseItem().allowLay())) {
+                    if (!Emulator.getConfig().getBoolean("wired.place.under", false)
+                            || (Emulator.getConfig().getBoolean("wired.place.under", false) && !item.isWalkable()
+                                    && !item.getBaseItem().allowSit() && !item.getBaseItem().allowLay())) {
                         if (checkForUnits) {
                             if (!magicTile && this.room.hasHabbosAt(t.x, t.y)) {
                                 return FurnitureMovementError.TILE_HAS_HABBOS;
@@ -1457,8 +1698,8 @@ public class RoomItemManager {
         }
 
         THashSet<RoomTile> oldOccupiedTiles = layout.getTilesAt(
-            layout.getTile(item.getX(), item.getY()), item.getBaseItem().getWidth(),
-            item.getBaseItem().getLength(), item.getRotation());
+                layout.getTile(item.getX(), item.getY()), item.getBaseItem().getWidth(),
+                item.getBaseItem().getLength(), item.getRotation());
 
         int oldRotation = item.getRotation();
 
@@ -1475,9 +1716,9 @@ public class RoomItemManager {
             }
 
             if ((!stackHelper.isPresent() && topItem != null && topItem != item && !topItem.getBaseItem()
-                .allowStack()) || (topItem != null && topItem != item
-                && topItem.getZ() + Item.getCurrentHeight(topItem) + Item.getCurrentHeight(item)
-                > Room.MAXIMUM_FURNI_HEIGHT)) {
+                    .allowStack()) || (topItem != null && topItem != item
+                            && topItem.getZ() + Item.getCurrentHeight(topItem)
+                                    + Item.getCurrentHeight(item) > Room.MAXIMUM_FURNI_HEIGHT)) {
                 item.setRotation(oldRotation);
                 return FurnitureMovementError.CANT_STACK;
             }
@@ -1488,7 +1729,7 @@ public class RoomItemManager {
 
         if (stackHelper.isPresent()) {
             height = stackHelper.get().getExtradata().isEmpty() ? Double.parseDouble("0.0")
-                : (Double.parseDouble(stackHelper.get().getExtradata()) / 100);
+                    : (Double.parseDouble(stackHelper.get().getExtradata()) / 100);
         } else if (item == topItem) {
             height = item.getZ();
         } else if (magicTile) {
@@ -1525,7 +1766,7 @@ public class RoomItemManager {
 
         if (Emulator.getPluginManager().isRegistered(FurnitureBuildheightEvent.class, true)) {
             FurnitureBuildheightEvent event = Emulator.getPluginManager()
-                .fireEvent(new FurnitureBuildheightEvent(item, actor, 0.00, height));
+                    .fireEvent(new FurnitureBuildheightEvent(item, actor, 0.00, height));
             if (event.hasChangedHeight()) {
                 height = layout.getHeightAtSquare(tile.x, tile.y) + event.getUpdatedHeight();
                 pluginHeight = true;
@@ -1546,19 +1787,23 @@ public class RoomItemManager {
         if (item.getZ() > Room.MAXIMUM_FURNI_HEIGHT) {
             item.setZ(Room.MAXIMUM_FURNI_HEIGHT);
         }
-        
+
         // Update wired spatial index and invalidate cache when wired items are moved
         if (item instanceof InteractionWiredTrigger) {
-            this.room.getRoomSpecialTypes().updateTriggerLocation((InteractionWiredTrigger) item, oldLocation.x, oldLocation.y);
+            this.room.getRoomSpecialTypes().updateTriggerLocation((InteractionWiredTrigger) item, oldLocation.x,
+                    oldLocation.y);
             WiredManager.invalidateRoom(this.room);
         } else if (item instanceof InteractionWiredEffect) {
-            this.room.getRoomSpecialTypes().updateEffectLocation((InteractionWiredEffect) item, oldLocation.x, oldLocation.y);
+            this.room.getRoomSpecialTypes().updateEffectLocation((InteractionWiredEffect) item, oldLocation.x,
+                    oldLocation.y);
             WiredManager.invalidateRoom(this.room);
         } else if (item instanceof InteractionWiredCondition) {
-            this.room.getRoomSpecialTypes().updateConditionLocation((InteractionWiredCondition) item, oldLocation.x, oldLocation.y);
+            this.room.getRoomSpecialTypes().updateConditionLocation((InteractionWiredCondition) item, oldLocation.x,
+                    oldLocation.y);
             WiredManager.invalidateRoom(this.room);
         } else if (item instanceof InteractionWiredExtra) {
-            this.room.getRoomSpecialTypes().updateExtraLocation((InteractionWiredExtra) item, oldLocation.x, oldLocation.y);
+            this.room.getRoomSpecialTypes().updateExtraLocation((InteractionWiredExtra) item, oldLocation.x,
+                    oldLocation.y);
             WiredManager.invalidateRoom(this.room);
         }
 
@@ -1602,10 +1847,10 @@ public class RoomItemManager {
         boolean magicTile = item instanceof InteractionStackHelper;
 
         RoomLayout layout = this.room.getLayout();
-        
+
         // Check if can be placed at new position
         THashSet<RoomTile> occupiedTiles = layout.getTilesAt(tile, item.getBaseItem().getWidth(),
-            item.getBaseItem().getLength(), rotation);
+                item.getBaseItem().getLength(), rotation);
 
         java.util.List<Pair<RoomTile, THashSet<HabboItem>>> tileFurniList = new java.util.ArrayList<>();
         for (RoomTile t : occupiedTiles) {

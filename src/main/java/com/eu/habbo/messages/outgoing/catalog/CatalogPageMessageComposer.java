@@ -4,6 +4,7 @@ import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.catalog.CatalogFeaturedPage;
 import com.eu.habbo.habbohotel.catalog.CatalogItem;
 import com.eu.habbo.habbohotel.catalog.CatalogPage;
+import com.eu.habbo.habbohotel.catalog.CatalogPageMode;
 import com.eu.habbo.habbohotel.catalog.layouts.FrontPageFeaturedLayout;
 import com.eu.habbo.habbohotel.catalog.layouts.FrontpageLayout;
 import com.eu.habbo.habbohotel.catalog.layouts.RecentPurchasesLayout;
@@ -21,9 +22,13 @@ public class CatalogPageMessageComposer extends MessageComposer {
     private final CatalogPage page;
     private final Habbo habbo;
     private final int offerId;
-    private final String mode;
+    private final CatalogPageMode mode;
 
     public CatalogPageMessageComposer(CatalogPage page, Habbo habbo, int offerId, String mode) {
+        this(page, habbo, offerId, CatalogPageMode.fromClientMode(mode));
+    }
+
+    public CatalogPageMessageComposer(CatalogPage page, Habbo habbo, int offerId, CatalogPageMode mode) {
         this.page = page;
         this.habbo = habbo;
         this.offerId = offerId;
@@ -34,7 +39,7 @@ public class CatalogPageMessageComposer extends MessageComposer {
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.CatalogPageMessageComposer);
         this.response.appendInt(this.page.getId());
-        this.response.appendString(this.mode);
+        this.response.appendString(this.mode.getClientMode());
         this.page.serialize(this.response);
 
         if (this.page instanceof RecentPurchasesLayout) {
@@ -44,9 +49,8 @@ public class CatalogPageMessageComposer extends MessageComposer {
                 item.getValue().serialize(this.response);
             }
         } else {
-            this.response.appendInt(this.page.getCatalogItems().size());
-            List<CatalogItem> items = new ArrayList<>(this.page.getCatalogItems().valueCollection());
-            Collections.sort(items);
+            List<CatalogItem> items = Emulator.getGameEnvironment().getCatalogManager().getVisibleCatalogItems(this.page, this.habbo, this.mode);
+            this.response.appendInt(items.size());
             for (CatalogItem item : items) {
                 item.serialize(this.response);
             }
@@ -82,6 +86,6 @@ public class CatalogPageMessageComposer extends MessageComposer {
     }
 
     public String getMode() {
-        return mode;
+        return mode.getClientMode();
     }
 }

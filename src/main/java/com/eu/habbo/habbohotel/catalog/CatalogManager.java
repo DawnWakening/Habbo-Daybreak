@@ -184,6 +184,7 @@ public class CatalogManager {
     public static int catalogItemAmount;
     public static int PURCHASE_COOLDOWN = 1;
     public static boolean SORT_USING_ORDERNUM = false;
+    public static String BUILDERS_CLUB_FURNIDATA_URL = "";
     public final TIntObjectMap<CatalogPage> catalogPages;
     public final TIntObjectMap<CatalogFeaturedPage> catalogFeaturedPages;
     public final THashMap<Integer, THashSet<Item>> prizes;
@@ -197,6 +198,7 @@ public class CatalogManager {
     public final Item ecotronItem;
     public final THashMap<Integer, CatalogLimitedConfiguration> limitedNumbers;
     private final List<Voucher> vouchers;
+    private BuildersClubCatalogRegistry buildersClubCatalogRegistry;
 
     public CatalogManager() {
         long millis = System.currentTimeMillis();
@@ -212,6 +214,7 @@ public class CatalogManager {
         this.offerDefs = new TIntIntHashMap();
         this.vouchers = new ArrayList<>();
         this.limitedNumbers = new THashMap<>();
+        this.buildersClubCatalogRegistry = new BuildersClubCatalogRegistry();
 
         this.initialize();
 
@@ -228,6 +231,7 @@ public class CatalogManager {
         this.loadCatalogPages();
         this.loadCatalogFeaturedPages();
         this.loadCatalogItems();
+        this.reloadBuildersClubCatalogRegistry();
         this.loadClubOffers();
         this.loadTargetOffers();
         this.loadVouchers();
@@ -341,11 +345,14 @@ public class CatalogManager {
         try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); Statement statement = connection.createStatement(); ResultSet set = statement.executeQuery("SELECT * FROM catalog_items")) {
             CatalogItem item;
             while (set.next()) {
-                if (set.getString("item_ids").equals("0"))
+                CatalogItem loadedItem = new CatalogItem(set);
+
+                if (set.getString("item_ids").equals("0") && !loadedItem.isSubscriptionOffer()) {
                     continue;
+                }
 
                 if (set.getString("catalog_name").contains("HABBO_CLUB_")) {
-                    this.clubItems.add(new CatalogItem(set));
+                    this.clubItems.add(loadedItem);
                     continue;
                 }
 
@@ -358,7 +365,7 @@ public class CatalogManager {
 
                 if (item == null) {
                     catalogItemAmount++;
-                    item = new CatalogItem(set);
+                    item = loadedItem;
                     page.addItem(item);
 
                     if (item.getOfferId() != -1) {
@@ -386,6 +393,11 @@ public class CatalogManager {
                 }
             }
         }
+    }
+
+    public synchronized void reloadBuildersClubCatalogRegistry() {
+        this.buildersClubCatalogRegistry = BuildersClubCatalogRegistry.load(BUILDERS_CLUB_FURNIDATA_URL);
+        LOGGER.info("Loaded {} Builder's Club furnidata mappings", this.buildersClubCatalogRegistry.size());
     }
 
     private void loadClubOffers() {
@@ -582,10 +594,30 @@ public class CatalogManager {
         return this.catalogPages.get(pageId);
     }
 
+    public CatalogPage getCatalogPage(int pageId, CatalogPageMode mode) {
+        CatalogPage page = this.getCatalogPage(pageId);
+
+        if (page == null || page.getCatalogType() != mode) {
+            return null;
+        }
+
+        return page;
+    }
+
     public CatalogPage getCatalogPage(String captionSafe) {
         return this.catalogPages.valueCollection().stream()
                 .filter(p -> p != null && p.getPageName() != null && p.getPageName().equalsIgnoreCase(captionSafe))
                 .findAny().orElse(null);
+    }
+
+    public CatalogPage getCatalogPage(String captionSafe, CatalogPageMode mode) {
+        CatalogPage page = this.getCatalogPage(captionSafe);
+
+        if (page == null || page.getCatalogType() != mode) {
+            return null;
+        }
+
+        return page;
     }
 
     public CatalogPage getCatalogPageByLayout(String layoutName) {
@@ -615,20 +647,48 @@ public class CatalogManager {
         return item[0];
     }
 
+    public CatalogItem getCatalogItemByOfferId(int offerId) {
+        if (offerId <= 0) {
+            return null;
+        }
+
+        int catalogItemId = this.offerDefs.get(offerId);
+        if (catalogItemId > 0) {
+            return this.getCatalogItem(catalogItemId);
+        }
+
+        return null;
+    }
+
+    public CatalogItem getCatalogItemByWireId(int wireId) {
+        if (wireId <= 0) {
+            return null;
+        }
+
+        CatalogItem item = this.getCatalogItemByOfferId(wireId);
+        if (item != null) {
+            return item;
+        }
+
+        return this.getCatalogItem(wireId);
+    }
+
 
     public List<CatalogPage> getCatalogPages(int parentId, final Habbo habbo) {
-        final List<CatalogPage> pages = new ArrayList<>();
+        return this.getCatalogPages(parentId, habbo, CatalogPageMode.NORMAL);
+    }
 
-        this.catalogPages.get(parentId).childPages.forEachValue(new TObjectProcedure<CatalogPage>() {
+    public List<CatalogPage> getCatalogPages(int parentId, final Habbo habbo, final CatalogPageMode mode) {
+        final List<CatalogPage> pages = new ArrayList<>();
+        CatalogPage parent = this.catalogPages.get(parentId);
+        if (parent == null) {
+            return pages;
+        }
+
+        parent.childPages.forEachValue(new TObjectProcedure<CatalogPage>() {
             @Override
             public boolean execute(CatalogPage object) {
-
-                boolean isVisiblePage = object.visible;
-                boolean hasRightRank = object.getRank() <= habbo.getHabboInfo().getRank().getId();
-
-                boolean clubRightsOkay = !object.isClubOnly() || habbo.getHabboInfo().getHabboStats().hasActiveClub();
-
-                if (isVisiblePage && hasRightRank && clubRightsOkay) {
+                if (canViewPage(object, habbo, mode)) {
                     pages.add(object);
                 }
                 return true;
@@ -637,6 +697,129 @@ public class CatalogManager {
         Collections.sort(pages);
 
         return pages;
+    }
+
+    public CatalogItem getCatalogItemByOfferId(CatalogPage page, int offerId) {
+        if (page == null || offerId <= 0) {
+            return null;
+        }
+
+        for (CatalogItem item : page.getCatalogItems().valueCollection()) {
+            if (item != null && item.getOfferId() == offerId) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    public CatalogItem getCatalogItemByWireId(CatalogPage page, int wireId) {
+        if (page == null || wireId <= 0) {
+            return null;
+        }
+
+        CatalogItem item = this.getCatalogItemByOfferId(page, wireId);
+        if (item != null) {
+            return item;
+        }
+
+        return page.getCatalogItem(wireId);
+    }
+
+    public List<CatalogItem> getVisibleCatalogItems(CatalogPage page, Habbo habbo, CatalogPageMode mode) {
+        List<CatalogItem> items = new ArrayList<>();
+        if (page == null) {
+            return items;
+        }
+
+        for (CatalogItem item : page.getCatalogItems().valueCollection()) {
+            if (item == null) {
+                continue;
+            }
+
+            if (item.isClubOnly() && !habbo.getHabboStats().hasActiveClub()) {
+                continue;
+            }
+
+            if (mode.isBuildersClub() && !isBuildersClubVisibleItem(page, item)) {
+                continue;
+            }
+
+            items.add(item);
+        }
+
+        Collections.sort(items);
+        return items;
+    }
+
+    public boolean isBuildersClubPlaceableItem(CatalogPage page, CatalogItem item) {
+        if (page == null || item == null || page.getCatalogType() != CatalogPageMode.BUILDERS_CLUB) {
+            return false;
+        }
+
+        if (!shouldFilterBuildersClubPlacementPage(page)) {
+            return false;
+        }
+
+        if (item.isSubscriptionOffer() || item.getOfferId() <= 0 || !item.hasBaseItems()) {
+            return false;
+        }
+
+        if (!this.buildersClubCatalogRegistry.matches(item)) {
+            return false;
+        }
+
+        if (!item.isSimpleSingleItemOffer()) {
+            return false;
+        }
+
+        for (Item baseItem : item.getBaseItems()) {
+            if (baseItem == null) {
+                return false;
+            }
+
+            if (baseItem.getType() != FurnitureType.FLOOR && baseItem.getType() != FurnitureType.WALL) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public BuildersClubCatalogRegistry getBuildersClubCatalogRegistry() {
+        return this.buildersClubCatalogRegistry;
+    }
+
+    private boolean canViewPage(CatalogPage page, Habbo habbo, CatalogPageMode mode) {
+        if (page == null || page.getCatalogType() != mode) {
+            return false;
+        }
+
+        boolean isVisiblePage = page.visible;
+        boolean hasRightRank = page.getRank() <= habbo.getHabboInfo().getRank().getId();
+        boolean clubRightsOkay = !page.isClubOnly() || habbo.getHabboInfo().getHabboStats().hasActiveClub();
+
+        return isVisiblePage && hasRightRank && clubRightsOkay;
+    }
+
+    private boolean isBuildersClubVisibleItem(CatalogPage page, CatalogItem item) {
+        if (!shouldFilterBuildersClubPlacementPage(page)) {
+            return true;
+        }
+
+        return isBuildersClubPlaceableItem(page, item);
+    }
+
+    private boolean shouldFilterBuildersClubPlacementPage(CatalogPage page) {
+        if (page == null || page.getCatalogType() != CatalogPageMode.BUILDERS_CLUB) {
+            return false;
+        }
+
+        if (page.getLayout() == null) {
+            return true;
+        }
+
+        return !page.getLayout().equalsIgnoreCase(CatalogPageLayouts.builders_club_addons.name())
+                && !page.getLayout().equalsIgnoreCase(CatalogPageLayouts.builders_club_loyalty.name());
     }
 
     public TIntObjectMap<CatalogFeaturedPage> getCatalogFeaturedPages() {
@@ -886,6 +1069,27 @@ public class CatalogManager {
                 if (totalCredits > 0 && habbo.getHabboInfo().getCredits() - totalCredits < 0) return;
                 if (totalPoints > 0 && habbo.getHabboInfo().getCurrencyAmount(item.getPointsType()) - totalPoints < 0)
                     return;
+
+                if (item.isSubscriptionOffer()) {
+                    int totalDays = item.getSubscriptionDays() * amount;
+
+                    if (!free && !habbo.hasPermission(Permission.ACC_INFINITE_CREDITS) && totalCredits > 0) {
+                        habbo.giveCredits(-totalCredits);
+                    }
+
+                    if (!free && !habbo.hasPermission(Permission.ACC_INFINITE_POINTS) && totalPoints > 0) {
+                        habbo.givePoints(item.getPointsType(), -totalPoints);
+                    }
+
+                    if (habbo.getHabboStats().createSubscription(item.getSubscriptionType(), totalDays * 86400) == null) {
+                        habbo.getClient().sendResponse(new PurchaseErrorMessageComposer(PurchaseErrorMessageComposer.SERVER_ERROR));
+                        return;
+                    }
+
+                    habbo.getClient().sendResponse(new PurchaseOKMessageComposer(item));
+                    habbo.getClient().sendResponse(new FurniListInvalidateMessageComposer());
+                    return;
+                }
 
                 List<String> badges = new ArrayList<>();
                 Map<UnseenItemsMessageComposer.AddHabboItemCategory, List<Integer>> unseenItems = new HashMap<>();

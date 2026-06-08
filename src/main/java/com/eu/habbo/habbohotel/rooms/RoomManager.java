@@ -27,6 +27,7 @@ import com.eu.habbo.habbohotel.polls.Poll;
 import com.eu.habbo.habbohotel.polls.PollManager;
 import com.eu.habbo.habbohotel.users.*;
 import com.eu.habbo.habbohotel.wired.core.WiredManager;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.messages.incoming.users.NewUserExperienceScriptProceedEvent;
 import com.eu.habbo.messages.outgoing.generic.alerts.GenericErrorMessagesComposer;
 import com.eu.habbo.messages.outgoing.hotelview.CloseConnectionMessageComposer;
@@ -528,6 +529,21 @@ public class RoomManager {
 
         if (room.isBanned(habbo) && !habbo.hasPermission(Permission.ACC_ANYROOMOWNER) && !habbo.hasPermission(Permission.ACC_ENTERANYROOM)) {
             habbo.getClient().sendResponse(new CantConnectMessageComposer(CantConnectMessageComposer.ROOM_ERROR_BANNED));
+            return;
+        }
+
+        boolean buildersClubLockBypass = overrideChecks
+                || room.isOwner(habbo)
+                || habbo.hasPermission(Permission.ACC_ANYROOMOWNER)
+                || habbo.hasPermission(Permission.ACC_ENTERANYROOM)
+                || room.hasRights(habbo)
+                || (room.hasGuild() && room.getGuildRightLevel(habbo).isEqualOrGreaterThan(RoomRightLevels.GUILD_RIGHTS));
+
+        if (SubscriptionBuildersClub.shouldLockRoom(room) && !buildersClubLockBypass) {
+            SubscriptionBuildersClub.notifyBuildersClubVisitorDenied(room, habbo);
+            habbo.getClient().sendResponse(new CantConnectMessageComposer(CantConnectMessageComposer.ROOM_ERROR_CANT_ENTER, CantConnectMessageComposer.ROOM_LOCKED));
+            habbo.getClient().sendResponse(new CloseConnectionMessageComposer());
+            habbo.getHabboInfo().setLoadingRoom(0);
             return;
         }
 

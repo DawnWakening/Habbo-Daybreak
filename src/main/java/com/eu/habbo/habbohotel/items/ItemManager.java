@@ -52,9 +52,11 @@ import com.eu.habbo.habbohotel.wired.highscores.WiredHighscoreManager;
 import com.eu.habbo.habbohotel.items.interactions.wired.triggers.*;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboItem;
+
 import com.eu.habbo.messages.outgoing.inventory.UnseenItemsMessageComposer;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadItemsManagerEvent;
 import com.eu.habbo.threading.runnables.QueryDeleteHabboItem;
+import java.sql.Statement;
 import gnu.trove.TCollections;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntObjectMap;
@@ -72,7 +74,7 @@ public class ItemManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ItemManager.class);
 
-    //Configuration. Loaded from database & updated accordingly.
+    // Configuration. Loaded from database & updated accordingly.
     public static boolean RECYCLER_ENABLED = true;
 
     private final TIntObjectMap<Item> items;
@@ -184,14 +186,17 @@ public class ItemManager {
         this.interactionsList.add(new ItemInteraction("handitem_tile", InteractionHanditemTile.class));
         this.interactionsList.add(new ItemInteraction("effect_giver", InteractionEffectGiver.class));
         this.interactionsList.add(new ItemInteraction("effect_vendingmachine", InteractionEffectVendingMachine.class));
-        this.interactionsList.add(new ItemInteraction("effect_vendingmachine_no_sides", InteractionEffectVendingMachineNoSides.class));
+        this.interactionsList.add(
+                new ItemInteraction("effect_vendingmachine_no_sides", InteractionEffectVendingMachineNoSides.class));
         this.interactionsList.add(new ItemInteraction("crackable_monster", InteractionMonsterCrackable.class));
         this.interactionsList.add(new ItemInteraction("snowboard_slope", InteractionSnowboardSlope.class));
         this.interactionsList.add(new ItemInteraction("pressureplate_group", InteractionGroupPressurePlate.class));
         this.interactionsList.add(new ItemInteraction("effect_tile_group", InteractionEffectTile.class));
-        this.interactionsList.add(new ItemInteraction("crackable_subscription_box", InteractionRedeemableSubscriptionBox.class));
+        this.interactionsList
+                .add(new ItemInteraction("crackable_subscription_box", InteractionRedeemableSubscriptionBox.class));
         this.interactionsList.add(new ItemInteraction("random_state", InteractionRandomState.class));
-        this.interactionsList.add(new ItemInteraction("vendingmachine_no_sides", InteractionNoSidesVendingMachine.class));
+        this.interactionsList
+                .add(new ItemInteraction("vendingmachine_no_sides", InteractionNoSidesVendingMachine.class));
         this.interactionsList.add(new ItemInteraction("tile_walkmagic", InteractionTileWalkMagic.class));
 
         this.interactionsList.add(new ItemInteraction("game_timer", InteractionGameTimer.class));
@@ -213,7 +218,6 @@ public class ItemManager {
         this.interactionsList.add(new ItemInteraction("wf_trg_score_achieved", WiredTriggerScoreAchieved.class));
         this.interactionsList.add(new ItemInteraction("wf_trg_game_team_win", WiredTriggerTeamWins.class));
         this.interactionsList.add(new ItemInteraction("wf_trg_game_team_lose", WiredTriggerTeamLoses.class));
-
 
         this.interactionsList.add(new ItemInteraction("wf_act_toggle_state", WiredEffectToggleFurni.class));
         this.interactionsList.add(new ItemInteraction("wf_act_reset_timers", WiredEffectResetTimers.class));
@@ -264,7 +268,8 @@ public class ItemManager {
         this.interactionsList.add(new ItemInteraction("wf_cnd_not_wearing_b", WiredConditionNotHabboWearsBadge.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_not_in_group", WiredConditionNotInGroup.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_not_in_team", WiredConditionNotInTeam.class));
-        this.interactionsList.add(new ItemInteraction("wf_cnd_not_match_snap", WiredConditionNotMatchStatePosition.class));
+        this.interactionsList
+                .add(new ItemInteraction("wf_cnd_not_match_snap", WiredConditionNotMatchStatePosition.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_not_trggrer_on", WiredConditionNotTriggerOnFurni.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_actor_in_team", WiredConditionTeamMember.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_trggrer_on_frn", WiredConditionTriggerOnFurni.class));
@@ -272,68 +277,67 @@ public class ItemManager {
         this.interactionsList.add(new ItemInteraction("wf_cnd_date_rng_active", WiredConditionDateRangeActive.class));
         this.interactionsList.add(new ItemInteraction("wf_cnd_valid_moves", WiredConditionMovementValidation.class));
 
-
         this.interactionsList.add(new ItemInteraction("wf_xtra_random", WiredExtraRandom.class));
         this.interactionsList.add(new ItemInteraction("wf_xtra_unseen", WiredExtraUnseen.class));
         this.interactionsList.add(new ItemInteraction("wf_blob", WiredBlob.class));
         this.interactionsList.add(new ItemInteraction("wf_xtra_or_eval", WiredExtraOrEval.class));
 
-
         this.interactionsList.add(new ItemInteraction("wf_highscore", InteractionWiredHighscore.class));
 
-
         this.interactionsList.add(new ItemInteraction("battlebanzai_tile", InteractionBattleBanzaiTile.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_random_teleport", InteractionBattleBanzaiTeleporter.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_random_teleport", InteractionBattleBanzaiTeleporter.class));
         this.interactionsList.add(new ItemInteraction("battlebanzai_sphere", InteractionBattleBanzaiSphere.class));
         this.interactionsList.add(new ItemInteraction("battlebanzai_puck", InteractionBattleBanzaiPuck.class));
 
-
         this.interactionsList.add(new ItemInteraction("battlebanzai_gate_blue", InteractionBattleBanzaiGateBlue.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_gate_green", InteractionBattleBanzaiGateGreen.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_gate_green", InteractionBattleBanzaiGateGreen.class));
         this.interactionsList.add(new ItemInteraction("battlebanzai_gate_red", InteractionBattleBanzaiGateRed.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_gate_yellow", InteractionBattleBanzaiGateYellow.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_gate_yellow", InteractionBattleBanzaiGateYellow.class));
 
-
-        this.interactionsList.add(new ItemInteraction("battlebanzai_counter_blue", InteractionBattleBanzaiScoreboardBlue.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_counter_green", InteractionBattleBanzaiScoreboardGreen.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_counter_red", InteractionBattleBanzaiScoreboardRed.class));
-        this.interactionsList.add(new ItemInteraction("battlebanzai_counter_yellow", InteractionBattleBanzaiScoreboardYellow.class));
-
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_counter_blue", InteractionBattleBanzaiScoreboardBlue.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_counter_green", InteractionBattleBanzaiScoreboardGreen.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_counter_red", InteractionBattleBanzaiScoreboardRed.class));
+        this.interactionsList
+                .add(new ItemInteraction("battlebanzai_counter_yellow", InteractionBattleBanzaiScoreboardYellow.class));
 
         this.interactionsList.add(new ItemInteraction("freeze_block", InteractionFreezeBlock.class));
         this.interactionsList.add(new ItemInteraction("freeze_tile", InteractionFreezeTile.class));
         this.interactionsList.add(new ItemInteraction("freeze_exit", InteractionFreezeExitTile.class));
-
 
         this.interactionsList.add(new ItemInteraction("freeze_gate_blue", InteractionFreezeGateBlue.class));
         this.interactionsList.add(new ItemInteraction("freeze_gate_green", InteractionFreezeGateGreen.class));
         this.interactionsList.add(new ItemInteraction("freeze_gate_red", InteractionFreezeGateRed.class));
         this.interactionsList.add(new ItemInteraction("freeze_gate_yellow", InteractionFreezeGateYellow.class));
 
-
         this.interactionsList.add(new ItemInteraction("freeze_counter_blue", InteractionFreezeScoreboardBlue.class));
         this.interactionsList.add(new ItemInteraction("freeze_counter_green", InteractionFreezeScoreboardGreen.class));
         this.interactionsList.add(new ItemInteraction("freeze_counter_red", InteractionFreezeScoreboardRed.class));
-        this.interactionsList.add(new ItemInteraction("freeze_counter_yellow", InteractionFreezeScoreboardYellow.class));
-
+        this.interactionsList
+                .add(new ItemInteraction("freeze_counter_yellow", InteractionFreezeScoreboardYellow.class));
 
         this.interactionsList.add(new ItemInteraction("icetag_pole", InteractionIceTagPole.class));
         this.interactionsList.add(new ItemInteraction("icetag_field", InteractionIceTagField.class));
 
-
         this.interactionsList.add(new ItemInteraction("bunnyrun_pole", InteractionBunnyrunPole.class));
         this.interactionsList.add(new ItemInteraction("bunnyrun_field", InteractionBunnyrunField.class));
 
-
         this.interactionsList.add(new ItemInteraction("rollerskate_field", InteractionRollerskateField.class));
-
 
         this.interactionsList.add(new ItemInteraction("football", InteractionFootball.class));
         this.interactionsList.add(new ItemInteraction("football_gate", InteractionFootballGate.class));
-        this.interactionsList.add(new ItemInteraction("football_counter_blue", InteractionFootballScoreboardBlue.class));
-        this.interactionsList.add(new ItemInteraction("football_counter_green", InteractionFootballScoreboardGreen.class));
+        this.interactionsList
+                .add(new ItemInteraction("football_counter_blue", InteractionFootballScoreboardBlue.class));
+        this.interactionsList
+                .add(new ItemInteraction("football_counter_green", InteractionFootballScoreboardGreen.class));
         this.interactionsList.add(new ItemInteraction("football_counter_red", InteractionFootballScoreboardRed.class));
-        this.interactionsList.add(new ItemInteraction("football_counter_yellow", InteractionFootballScoreboardYellow.class));
+        this.interactionsList
+                .add(new ItemInteraction("football_counter_yellow", InteractionFootballScoreboardYellow.class));
         this.interactionsList.add(new ItemInteraction("football_goal_blue", InteractionFootballGoalBlue.class));
         this.interactionsList.add(new ItemInteraction("football_goal_green", InteractionFootballGoalGreen.class));
         this.interactionsList.add(new ItemInteraction("football_goal_red", InteractionFootballGoalRed.class));
@@ -350,18 +354,18 @@ public class ItemManager {
         this.interactionsList.add(new ItemInteraction("totem_planet", InteractionTotemPlanet.class));
     }
 
-
     public void addItemInteraction(ItemInteraction itemInteraction) {
         for (ItemInteraction interaction : this.interactionsList) {
             if (interaction.getType() == itemInteraction.getType() ||
                     interaction.getName().equalsIgnoreCase(itemInteraction.getName()))
 
-                throw new RuntimeException("Interaction Types must be unique. An class with type: " + interaction.getClass().getName() + " was already added OR the key: " + interaction.getName() + " is already in use.");
+                throw new RuntimeException(
+                        "Interaction Types must be unique. An class with type: " + interaction.getClass().getName()
+                                + " was already added OR the key: " + interaction.getName() + " is already in use.");
         }
 
         this.interactionsList.add(itemInteraction);
     }
-
 
     public ItemInteraction getItemInteraction(Class<? extends HabboItem> type) {
         for (ItemInteraction interaction : this.interactionsList) {
@@ -373,7 +377,6 @@ public class ItemManager {
         return this.getItemInteraction(InteractionDefault.class);
     }
 
-
     public ItemInteraction getItemInteraction(String type) {
         for (ItemInteraction interaction : this.interactionsList) {
             if (interaction.getName().equalsIgnoreCase(type))
@@ -383,16 +386,14 @@ public class ItemManager {
         return this.getItemInteraction(InteractionDefault.class);
     }
 
-
     public void loadItems() {
         try (
                 Connection connection = Emulator.getDatabase().getDataSource().getConnection();
                 Statement statement = connection.createStatement();
-                ResultSet set = statement.executeQuery(("SELECT * FROM items_base ORDER BY id DESC"))
-        ) {
+                ResultSet set = statement.executeQuery(("SELECT * FROM items_base ORDER BY id DESC"))) {
             while (set.next()) {
                 try {
-                    //Item proxyItem =
+                    // Item proxyItem =
                     int id = set.getInt("id");
                     if (!this.items.containsKey(id))
                         this.items.put(id, new Item(set));
@@ -408,10 +409,11 @@ public class ItemManager {
         }
     }
 
-
     public void loadCrackable() {
         this.crackableRewards.clear();
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM items_crackable"); ResultSet set = statement.executeQuery()) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("SELECT * FROM items_crackable");
+                ResultSet set = statement.executeQuery()) {
             while (set.next()) {
                 CrackableReward reward;
                 try {
@@ -430,14 +432,12 @@ public class ItemManager {
         }
     }
 
-
     public int getCrackableCount(int itemId) {
         if (this.crackableRewards.containsKey(itemId))
             return this.crackableRewards.get(itemId).count;
         else
             return 0;
     }
-
 
     public int calculateCrackState(int count, int max, Item baseItem) {
         return (int) Math.floor((1.0D / ((double) max / (double) count) * baseItem.getStateCount()));
@@ -451,11 +451,12 @@ public class ItemManager {
         return this.getItem(this.crackableRewards.get(itemId).getRandomReward());
     }
 
-
     public void loadSoundTracks() {
         this.soundTracks.clear();
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM soundtracks"); ResultSet set = statement.executeQuery()) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("SELECT * FROM soundtracks");
+                ResultSet set = statement.executeQuery()) {
             while (set.next()) {
                 this.soundTracks.put(set.getString("code"), new SoundTrack(set));
             }
@@ -478,25 +479,47 @@ public class ItemManager {
     }
 
     public HabboItem createItem(int habboId, Item item, int limitedStack, int limitedSells, String extraData) {
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO items (user_id, item_id, extra_data, limited_data) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+        return this.createItemInternal(habboId, item, limitedStack, limitedSells, extraData, false);
+    }
+
+    private HabboItem createItemInternal(int habboId, Item item, int limitedStack, int limitedSells, String extraData,
+            boolean isBuildersClub) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO items (user_id, item_id, extra_data, limited_data, is_builders_club) VALUES (?, ?, ?, ?, ?)",
+                        Statement.RETURN_GENERATED_KEYS)) {
             statement.setInt(1, habboId);
             statement.setInt(2, item.getId());
             statement.setString(3, extraData);
             statement.setString(4, limitedStack + ":" + limitedSells);
+            statement.setInt(5, isBuildersClub ? 1 : 0);
             statement.execute();
 
-            try (ResultSet set = statement.getGeneratedKeys()) {
-                if (set.next()) {
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int id = generatedKeys.getInt(1);
+
                     Class<? extends HabboItem> itemClass = item.getInteractionType().getType();
 
+                    HabboItem habboItem = null;
                     if (itemClass != null) {
                         try {
-                            return itemClass.getDeclaredConstructor(int.class, int.class, Item.class, String.class, int.class, int.class).newInstance(set.getInt(1), habboId, item, extraData, limitedStack, limitedSells);
+                            habboItem = itemClass
+                                    .getDeclaredConstructor(int.class, int.class, Item.class, String.class, int.class,
+                                            int.class)
+                                    .newInstance(id, habboId, item, extraData, limitedStack, limitedSells);
                         } catch (Exception e) {
                             LOGGER.error("Caught exception", e);
-                            return new InteractionDefault(set.getInt(1), habboId, item, extraData, limitedStack, limitedSells);
+                            habboItem = new InteractionDefault(id, habboId, item, extraData, limitedStack,
+                                    limitedSells);
                         }
                     }
+
+                    if (habboItem != null && isBuildersClub) {
+                        habboItem.setBuildersClub(true);
+                    }
+
+                    return habboItem;
                 }
             }
         } catch (SQLException e) {
@@ -504,13 +527,19 @@ public class ItemManager {
         } catch (Exception e) {
             LOGGER.error("Caught exception", e);
         }
+
         return null;
+    }
+
+    public HabboItem createBuildersClubItem(int habboId, Item item, String extraData) {
+        return this.createItemInternal(habboId, item, 0, 0, extraData, true);
     }
 
     public void loadNewUserGifts() {
         this.newuserGifts.clear();
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM nux_gifts")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("SELECT * FROM nux_gifts")) {
             try (ResultSet set = statement.executeQuery()) {
                 while (set.next()) {
                     this.newuserGifts.put(set.getInt("id"), new NewUserGift(set));
@@ -538,7 +567,8 @@ public class ItemManager {
     }
 
     public void deleteItem(HabboItem item) {
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE id = ?")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE id = ?")) {
             statement.setInt(1, item.getId());
             statement.execute();
         } catch (SQLException e) {
@@ -547,22 +577,28 @@ public class ItemManager {
     }
 
     public HabboItem handleRecycle(Habbo habbo, String itemId) {
-        String extradata = Calendar.getInstance().get(Calendar.DAY_OF_MONTH) + "-" + (Calendar.getInstance().get(Calendar.MONTH) + 1) + "-" + Calendar.getInstance().get(Calendar.YEAR);
+        String extradata = Calendar.getInstance().get(Calendar.DAY_OF_MONTH) + "-"
+                + (Calendar.getInstance().get(Calendar.MONTH) + 1) + "-" + Calendar.getInstance().get(Calendar.YEAR);
 
         HabboItem item = null;
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO items (user_id, item_id, extra_data) VALUES (?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement(
+                        "INSERT INTO items (user_id, item_id, extra_data) VALUES (?, ?, ?)",
+                        Statement.RETURN_GENERATED_KEYS)) {
             statement.setInt(1, habbo.getHabboInfo().getId());
             statement.setInt(2, Emulator.getGameEnvironment().getCatalogManager().ecotronItem.getId());
             statement.setString(3, extradata);
             statement.execute();
 
             try (ResultSet set = statement.getGeneratedKeys()) {
-                try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO items_presents VALUES (?, ?)")) {
+                try (PreparedStatement preparedStatement = connection
+                        .prepareStatement("INSERT INTO items_presents VALUES (?, ?)")) {
                     while (set.next() && item == null) {
                         preparedStatement.setInt(1, set.getInt(1));
                         preparedStatement.setInt(2, Integer.parseInt(itemId));
                         preparedStatement.addBatch();
-                        item = new InteractionDefault(set.getInt(1), habbo.getHabboInfo().getId(), Emulator.getGameEnvironment().getCatalogManager().ecotronItem, extradata, 0, 0);
+                        item = new InteractionDefault(set.getInt(1), habbo.getHabboInfo().getId(),
+                                Emulator.getGameEnvironment().getCatalogManager().ecotronItem, extradata, 0, 0);
                     }
 
                     preparedStatement.executeBatch();
@@ -578,23 +614,28 @@ public class ItemManager {
     public HabboItem handleOpenRecycleBox(Habbo habbo, HabboItem box) {
         Emulator.getThreading().run(new QueryDeleteHabboItem(box.getId()));
         HabboItem item = null;
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM items_presents WHERE item_id = ? LIMIT 1")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection
+                        .prepareStatement("SELECT * FROM items_presents WHERE item_id = ? LIMIT 1")) {
             statement.setInt(1, box.getId());
             try (ResultSet rewardSet = statement.executeQuery()) {
                 if (rewardSet.next()) {
-                    try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO items (user_id, item_id) VALUES(?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                    try (PreparedStatement preparedStatement = connection.prepareStatement(
+                            "INSERT INTO items (user_id, item_id) VALUES(?, ?)", Statement.RETURN_GENERATED_KEYS)) {
                         preparedStatement.setInt(1, habbo.getHabboInfo().getId());
                         preparedStatement.setInt(2, rewardSet.getInt("base_item_reward"));
                         preparedStatement.execute();
 
                         try (ResultSet set = preparedStatement.getGeneratedKeys()) {
                             if (set.next()) {
-                                try (PreparedStatement request = connection.prepareStatement("SELECT * FROM items WHERE id = ? LIMIT 1")) {
+                                try (PreparedStatement request = connection
+                                        .prepareStatement("SELECT * FROM items WHERE id = ? LIMIT 1")) {
                                     request.setInt(1, set.getInt(1));
 
                                     try (ResultSet resultSet = request.executeQuery()) {
                                         if (resultSet.next()) {
-                                            try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM items_presents WHERE item_id = ? LIMIT 1")) {
+                                            try (PreparedStatement deleteStatement = connection.prepareStatement(
+                                                    "DELETE FROM items_presents WHERE item_id = ? LIMIT 1")) {
                                                 deleteStatement.setInt(1, box.getId());
                                                 deleteStatement.execute();
 
@@ -618,7 +659,9 @@ public class ItemManager {
     }
 
     public void insertTeleportPair(int itemOneId, int itemTwoId) {
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO items_teleports VALUES (?, ?)")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection
+                        .prepareStatement("INSERT INTO items_teleports VALUES (?, ?)")) {
             statement.setInt(1, itemOneId);
             statement.setInt(2, itemTwoId);
             statement.execute();
@@ -628,7 +671,8 @@ public class ItemManager {
     }
 
     public void insertHopper(HabboItem hopper) {
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("INSERT INTO items_hoppers VALUES (?, ?)")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("INSERT INTO items_hoppers VALUES (?, ?)")) {
             statement.setInt(1, hopper.getId());
             statement.setInt(2, hopper.getBaseItem().getId());
             statement.execute();
@@ -638,13 +682,15 @@ public class ItemManager {
     }
 
     public int[] getTargetTeleportRoomId(HabboItem item) {
-        int[] a = new int[]{};
+        int[] a = new int[] {};
 
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT items.id, items.room_id FROM items_teleports INNER JOIN items ON items_teleports.teleport_one_id = items.id OR items_teleports.teleport_two_id = items.id WHERE items.id != ? AND items.room_id > 0 LIMIT 1")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement(
+                        "SELECT items.id, items.room_id FROM items_teleports INNER JOIN items ON items_teleports.teleport_one_id = items.id OR items_teleports.teleport_two_id = items.id WHERE items.id != ? AND items.room_id > 0 LIMIT 1")) {
             statement.setInt(1, item.getId());
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
-                    a = new int[]{set.getInt("room_id"), set.getInt("id")};
+                    a = new int[] { set.getInt("room_id"), set.getInt("id") };
                 }
             }
         } catch (SQLException e) {
@@ -656,7 +702,8 @@ public class ItemManager {
 
     public HabboItem loadHabboItem(int itemId) {
         HabboItem item = null;
-        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM items WHERE id = ? LIMIT 1")) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                PreparedStatement statement = connection.prepareStatement("SELECT * FROM items WHERE id = ? LIMIT 1")) {
             statement.setInt(1, itemId);
             try (ResultSet set = statement.executeQuery()) {
                 if (set.next()) {
@@ -701,9 +748,10 @@ public class ItemManager {
 
         if (habbo != null) {
             userId = habbo.getHabboInfo().getId();
-        }
-        else {
-            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection(); PreparedStatement statement = connection.prepareStatement("SELECT id FROM users WHERE username = ?")) {
+        } else {
+            try (Connection connection = Emulator.getDatabase().getDataSource().getConnection();
+                    PreparedStatement statement = connection
+                            .prepareStatement("SELECT id FROM users WHERE username = ?")) {
                 statement.setString(1, username);
                 try (ResultSet set = statement.executeQuery()) {
                     if (set.next()) {
@@ -715,7 +763,7 @@ public class ItemManager {
             }
         }
 
-        if(userId > 0) {
+        if (userId > 0) {
             return createGift(userId, item, extraData, limitedStack, limitedSells);
         }
 
@@ -758,7 +806,7 @@ public class ItemManager {
     public Item getItem(String itemName) {
         TIntObjectIterator<Item> item = this.items.iterator();
 
-        for (int i = this.items.size(); i-- > 0; ) {
+        for (int i = this.items.size(); i-- > 0;) {
             try {
                 item.advance();
                 if (item.value().getName().equalsIgnoreCase(itemName)) {

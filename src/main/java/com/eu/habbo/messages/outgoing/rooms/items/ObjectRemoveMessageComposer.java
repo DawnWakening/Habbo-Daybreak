@@ -23,7 +23,7 @@ public class ObjectRemoveMessageComposer extends MessageComposer {
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.ObjectRemoveMessageComposer);
 
-        this.response.appendString(this.item.getId() + "");
+        this.response.appendString(this.item.getRoomVisibleId() + "");
         this.response.appendBoolean(false);
         this.response.appendInt(this.noUser ? 0 : this.item.getUserId());
         this.response.appendInt(0);

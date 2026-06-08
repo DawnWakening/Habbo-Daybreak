@@ -53,7 +53,7 @@ public class WiredEffectChangeFurniDirection extends InteractionWiredEffect {
         THashSet<HabboItem> items = new THashSet<>();
 
         for (HabboItem item : this.items.keySet()) {
-            if (item == null || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null)
+            if (item == null || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItemByDatabaseId(item.getId()) == null)
                 items.add(item);
         }
 
@@ -157,7 +157,7 @@ public class WiredEffectChangeFurniDirection extends InteractionWiredEffect {
             this.blockedAction = data.blocked_action;
 
             for(WiredChangeDirectionSetting setting : data.items) {
-                HabboItem item = room.getHabboItem(setting.item_id);
+                HabboItem item = room.getHabboItemByDatabaseId(setting.item_id);
 
                 if (item != null) {
                     this.items.put(item, setting);
@@ -179,7 +179,7 @@ public class WiredEffectChangeFurniDirection extends InteractionWiredEffect {
                         String[] subData = data[i].split(":");
 
                         if (subData.length >= 2) {
-                            HabboItem item = room.getHabboItem(Integer.parseInt(subData[0]));
+                            HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(subData[0]));
 
                             if (item != null) {
                                 int rotation = item.getRotation();
@@ -218,10 +218,10 @@ public class WiredEffectChangeFurniDirection extends InteractionWiredEffect {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (Map.Entry<HabboItem, WiredChangeDirectionSetting> item : this.items.entrySet()) {
-            message.appendInt(item.getKey().getId());
+            message.appendInt(item.getKey().getRoomVisibleId());
         }
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(2);
         message.appendInt(this.startRotation != null ? this.startRotation.getValue() : 0);

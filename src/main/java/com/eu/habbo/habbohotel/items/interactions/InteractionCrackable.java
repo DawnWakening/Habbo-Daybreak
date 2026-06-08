@@ -127,7 +127,7 @@ public class InteractionCrackable extends HabboItem {
                                 habbo.getHabboStats().createSubscription(SubscriptionHabboClub.HABBO_CLUB, rewardData.subscriptionDuration * 86400);
                                 break;
                             case BUILDERS_CLUB:
-                                habbo.getHabboStats().createSubscription("BUILDERS_CLUB", rewardData.subscriptionDuration * 86400);
+                                habbo.getHabboStats().createBuildersClubBoxSubscription(rewardData.subscriptionDuration * 86400);
                                 break;
                         }
                     }

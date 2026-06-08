@@ -22,7 +22,7 @@ public class PresentOpenedMessageComposer extends MessageComposer {
         this.response.appendString(this.item.getBaseItem().getType().code.toLowerCase());
         this.response.appendInt(this.item.getBaseItem().getSpriteId());
         this.response.appendString(this.item.getBaseItem().getName());
-        this.response.appendInt(this.item.getId());
+        this.response.appendInt(this.item.getRoomVisibleId());
         this.response.appendString(this.item.getBaseItem().getType().code.toLowerCase());
         this.response.appendBoolean(this.unknown);
         this.response.appendString(this.text);

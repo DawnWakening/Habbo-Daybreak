@@ -68,7 +68,7 @@ public class WiredConditionNotInGroup extends InteractionWiredCondition {
         message.appendInt(5);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);

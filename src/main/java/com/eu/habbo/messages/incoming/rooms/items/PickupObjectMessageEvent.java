@@ -4,6 +4,7 @@ import com.eu.habbo.habbohotel.items.interactions.InteractionPostIt;
 import com.eu.habbo.habbohotel.permissions.Permission;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.HabboItem;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.messages.incoming.MessageHandler;
 
 public class PickupObjectMessageEvent extends MessageHandler {
@@ -25,17 +26,26 @@ public class PickupObjectMessageEvent extends MessageHandler {
         if (item instanceof InteractionPostIt)
             return;
 
+        if (item.isBuildersClub()) {
+            if (item.getUserId() == this.client.getHabbo().getHabboInfo().getId() || room.hasRights(this.client.getHabbo())) {
+                room.pickUpBuildersClubItem(item, this.client.getHabbo());
+                SubscriptionBuildersClub.pushCatalogState(this.client.getHabbo());
+            }
+            return;
+        }
+
         if (item.getUserId() == this.client.getHabbo().getHabboInfo().getId()) {
             room.pickUpItem(item, this.client.getHabbo());
         } else {
             if (room.hasRights(this.client.getHabbo())) {
                 if (this.client.getHabbo().hasPermission(Permission.ACC_ANYROOMOWNER)) {
                     item.setUserId(this.client.getHabbo().getHabboInfo().getId());
+                    room.pickUpItem(item, this.client.getHabbo());
                 } else if (this.client.getHabbo().getHabboInfo().getId() != room.getOwnerId() && item.getUserId() == room.getOwnerId()) {
                     return;
+                } else {
+                    room.ejectUserItem(item);
                 }
-
-                room.ejectUserItem(item);
             }
         }
     }

@@ -30,7 +30,8 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
         this.items = new THashSet<>();
     }
 
-    public WiredConditionFurniHaveFurni(int id, int userId, Item item, String extradata, int limitedStack, int limitedSells) {
+    public WiredConditionFurniHaveFurni(int id, int userId, Item item, String extradata, int limitedStack,
+            int limitedSells) {
         super(id, userId, item, extradata, limitedStack, limitedSells);
         this.items = new THashSet<>();
     }
@@ -41,32 +42,41 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
 
         this.refresh();
 
-        if(this.items.isEmpty())
+        if (this.items.isEmpty())
             return true;
 
         if (room.getLayout() == null)
             return false;
 
-        if(this.all) {
+        if (this.all) {
             return this.items.stream().allMatch(item -> {
-                if (item == null) return false;
+                if (item == null)
+                    return false;
                 RoomTile baseTile = room.getLayout().getTile(item.getX(), item.getY());
-                if (baseTile == null) return false;
+                if (baseTile == null)
+                    return false;
                 double minZ = item.getZ() + Item.getCurrentHeight(item);
-                THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(), item.getBaseItem().getLength(), item.getRotation());
-                if (occupiedTiles == null) return false;
-                return occupiedTiles.stream().anyMatch(tile -> tile != null && room.getItemsAt(tile).stream().anyMatch(matchedItem -> matchedItem != item && matchedItem.getZ() >= minZ));
+                THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(),
+                        item.getBaseItem().getLength(), item.getRotation());
+                if (occupiedTiles == null)
+                    return false;
+                return occupiedTiles.stream().anyMatch(tile -> tile != null && room.getItemsAt(tile).stream()
+                        .anyMatch(matchedItem -> matchedItem != item && matchedItem.getZ() >= minZ));
             });
-        }
-        else {
+        } else {
             return this.items.stream().anyMatch(item -> {
-                if (item == null) return false;
+                if (item == null)
+                    return false;
                 RoomTile baseTile = room.getLayout().getTile(item.getX(), item.getY());
-                if (baseTile == null) return false;
+                if (baseTile == null)
+                    return false;
                 double minZ = item.getZ() + Item.getCurrentHeight(item);
-                THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(), item.getBaseItem().getLength(), item.getRotation());
-                if (occupiedTiles == null) return false;
-                return occupiedTiles.stream().anyMatch(tile -> tile != null && room.getItemsAt(tile).stream().anyMatch(matchedItem -> matchedItem != item && matchedItem.getZ() >= minZ));
+                THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(),
+                        item.getBaseItem().getLength(), item.getRotation());
+                if (occupiedTiles == null)
+                    return false;
+                return occupiedTiles.stream().anyMatch(tile -> tile != null && room.getItemsAt(tile).stream()
+                        .anyMatch(matchedItem -> matchedItem != item && matchedItem.getZ() >= minZ));
             });
         }
     }
@@ -82,8 +92,7 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
         this.refresh();
         return WiredManager.getGson().toJson(new JsonData(
                 this.all,
-                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())
-        ));
+                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())));
     }
 
     @Override
@@ -94,8 +103,8 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
             JsonData data = WiredManager.getGson().fromJson(wiredData, JsonData.class);
             this.all = data.all;
 
-            for(int id : data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+            for (int id : data.itemIds) {
+                HabboItem item = room.getHabboItemByDatabaseId(id);
 
                 if (item != null) {
                     this.items.add(item);
@@ -112,7 +121,7 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
                     String[] items = data[1].split(";");
 
                     for (String s : items) {
-                        HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                        HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                         if (item != null)
                             this.items.add(item);
@@ -142,10 +151,10 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
         message.appendInt(this.items.size());
 
         for (HabboItem item : this.items)
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
 
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(1);
         message.appendInt(this.all ? 1 : 0);
@@ -157,12 +166,14 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
 
     @Override
     public boolean saveData(WiredSettings settings) {
-        if(settings.getIntParams().length < 1) return false;
+        if (settings.getIntParams().length < 1)
+            return false;
 
         this.all = settings.getIntParams()[0] == 1;
 
         int count = settings.getFurniIds().length;
-        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count")) return false;
+        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count"))
+            return false;
 
         this.items.clear();
 
@@ -189,7 +200,7 @@ public class WiredConditionFurniHaveFurni extends InteractionWiredCondition {
             items.addAll(this.items);
         } else {
             for (HabboItem item : this.items) {
-                if (room.getHabboItem(item.getId()) == null)
+                if (room.getHabboItemByDatabaseId(item.getId()) == null)
                     items.add(item);
             }
         }

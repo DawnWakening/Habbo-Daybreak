@@ -15,7 +15,7 @@ public class RequestSpamWallPostItMessageComposer extends MessageComposer {
     @Override
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.RequestSpamWallPostItMessageComposer);
-        this.response.appendInt(this.item == null ? -1234 : this.item.getId());
+        this.response.appendInt(this.item == null ? -1234 : this.item.getRoomVisibleId());
         this.response.appendString("");
         return this.response;
     }

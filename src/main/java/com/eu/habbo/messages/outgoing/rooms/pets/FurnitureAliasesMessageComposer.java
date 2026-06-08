@@ -15,7 +15,7 @@ public class FurnitureAliasesMessageComposer extends MessageComposer {
     @Override
     protected ServerMessage composeInternal() {
         this.response.init(Outgoing.LeprechaunStarterBundleComposer);
-        this.response.appendInt(this.item.getId());
+        this.response.appendInt(this.item.getRoomVisibleId());
         return this.response;
     }
 

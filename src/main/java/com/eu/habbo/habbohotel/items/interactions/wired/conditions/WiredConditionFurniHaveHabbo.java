@@ -32,7 +32,8 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
         this.items = new THashSet<>();
     }
 
-    public WiredConditionFurniHaveHabbo(int id, int userId, Item item, String extradata, int limitedStack, int limitedSells) {
+    public WiredConditionFurniHaveHabbo(int id, int userId, Item item, String extradata, int limitedStack,
+            int limitedSells) {
         super(id, userId, item, extradata, limitedStack, limitedSells);
         this.items = new THashSet<>();
     }
@@ -60,12 +61,21 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
 
         return this.items.stream().filter(item -> item != null).allMatch(item -> {
             RoomTile baseTile = room.getLayout().getTile(item.getX(), item.getY());
-            if (baseTile == null) return false;
-            
-            THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(), item.getBaseItem().getLength(), item.getRotation());
-            return habbos.stream().anyMatch(character -> character.getRoomUnit() != null && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation())) ||
-                    bots.stream().anyMatch(character -> character.getRoomUnit() != null && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation())) ||
-                    pets.stream().anyMatch(character -> character.getRoomUnit() != null && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation()));
+            if (baseTile == null)
+                return false;
+
+            THashSet<RoomTile> occupiedTiles = room.getLayout().getTilesAt(baseTile, item.getBaseItem().getWidth(),
+                    item.getBaseItem().getLength(), item.getRotation());
+            return habbos.stream()
+                    .anyMatch(character -> character.getRoomUnit() != null
+                            && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation()))
+                    ||
+                    bots.stream()
+                            .anyMatch(character -> character.getRoomUnit() != null
+                                    && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation()))
+                    ||
+                    pets.stream().anyMatch(character -> character.getRoomUnit() != null
+                            && occupiedTiles.contains(character.getRoomUnit().getCurrentLocation()));
         });
     }
 
@@ -79,8 +89,7 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
     public String getWiredData() {
         this.refresh();
         return WiredManager.getGson().toJson(new JsonData(
-                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())
-        ));
+                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())));
     }
 
     @Override
@@ -91,8 +100,8 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
         if (wiredData.startsWith("{")) {
             JsonData data = WiredManager.getGson().fromJson(wiredData, JsonData.class);
 
-            for(int id : data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+            for (int id : data.itemIds) {
+                HabboItem item = room.getHabboItemByDatabaseId(id);
 
                 if (item != null) {
                     this.items.add(item);
@@ -106,7 +115,7 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
                 String[] items = data[1].split(";");
 
                 for (String s : items) {
-                    HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                    HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                     if (item != null)
                         this.items.add(item);
@@ -129,10 +138,10 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
         message.appendInt(this.items.size());
 
         for (HabboItem item : this.items)
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
 
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);
@@ -145,7 +154,8 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
     public boolean saveData(WiredSettings settings) {
         int count = settings.getFurniIds().length;
 
-        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count")) return false;
+        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count"))
+            return false;
 
         this.items.clear();
 
@@ -173,7 +183,7 @@ public class WiredConditionFurniHaveHabbo extends InteractionWiredCondition {
             items.addAll(this.items);
         } else {
             for (HabboItem item : this.items) {
-                if (room.getHabboItem(item.getId()) == null)
+                if (room.getHabboItemByDatabaseId(item.getId()) == null)
                     items.add(item);
             }
         }

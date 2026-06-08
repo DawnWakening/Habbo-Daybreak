@@ -92,7 +92,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   public static final Comparator<Room> SORT_SCORE = (o1, o2) -> o2.getScore() - o1.getScore();
   public static final Comparator<Room> SORT_ID = (o1, o2) -> o2.getId() - o1.getId();
   private static final TIntObjectHashMap<RoomMoodlightData> defaultMoodData = new TIntObjectHashMap<>();
-  //Configuration. Loaded from database & updated accordingly.
+  // Configuration. Loaded from database & updated accordingly.
   public static boolean HABBO_CHAT_DELAY = false;
   public static int MAXIMUM_BOTS = 10;
   public static int MAXIMUM_PETS = 10;
@@ -123,7 +123,8 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   private final Set<Game> games;
   private final TIntObjectMap<RoomMoodlightData> moodlightData;
   private final Object loadLock = new Object();
-  //Use appropriately. Could potentially cause memory leaks when used incorrectly.
+  // Use appropriately. Could potentially cause memory leaks when used
+  // incorrectly.
   public volatile boolean preventUnloading = false;
   public volatile boolean preventUncaching = false;
   public Set<ServerMessage> scheduledComposers = ConcurrentHashMap.newKeySet();
@@ -187,7 +188,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   private volatile boolean muted;
   private RoomSpecialTypes roomSpecialTypes;
   private TraxManager traxManager;
-  
+
   public final THashMap<String, Object> cache;
 
   public Room(ResultSet set) throws SQLException {
@@ -235,8 +236,9 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     this.bannedHabbos = new TIntObjectHashMap<>();
 
     try (Connection connection = Emulator.getDatabase().getDataSource()
-        .getConnection(); PreparedStatement statement = connection.prepareStatement(
-        "SELECT * FROM room_promotions WHERE room_id = ? AND end_timestamp > ? LIMIT 1")) {
+        .getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "SELECT * FROM room_promotions WHERE room_id = ? AND end_timestamp > ? LIMIT 1")) {
       if (this.promoted) {
         statement.setInt(1, this.id);
         statement.setInt(2, Emulator.getIntUnixTimestamp());
@@ -410,7 +412,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       if (this.loaded || this.loadingInProgress || !this.preLoaded) {
         return;
       }
-      
+
       this.loadingInProgress = true;
       this.loadingFuture = CompletableFuture.runAsync(() -> {
         this.loadDataInternal();
@@ -430,7 +432,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       }
       future = this.loadingFuture;
     }
-    
+
     if (future != null) {
       try {
         future.join();
@@ -445,7 +447,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   public void loadData() {
     CompletableFuture<Void> futureToWait = null;
     boolean shouldLoad = false;
-    
+
     synchronized (this.loadLock) {
       if (this.loadingInProgress) {
         // Get the future to wait on outside the lock
@@ -455,7 +457,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
         shouldLoad = true;
       }
     }
-    
+
     // Wait for existing load outside the lock
     if (futureToWait != null) {
       try {
@@ -465,7 +467,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       }
       return;
     }
-    
+
     // Load if needed
     if (shouldLoad) {
       this.loadDataInternal();
@@ -526,21 +528,24 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
         }
       }, Emulator.getThreading().getService());
 
-      // Wait for items to be loaded before loading wired data (wired depends on items)
+      // Wait for items to be loaded before loading wired data (wired depends on
+      // items)
       try {
         itemsFuture.join();
       } catch (Exception e) {
         LOGGER.error("Error waiting for items to load", e);
       }
 
-      // Phase 3: Load heightmap after items are loaded (depends on items for stack heights)
+      // Phase 3: Load heightmap after items are loaded (depends on items for stack
+      // heights)
       try {
         this.loadHeightmap();
       } catch (Exception e) {
         LOGGER.error("Caught exception loading heightmap", e);
       }
 
-      // Phase 4: Load bots, pets, and wired data in parallel (all depend on layout + items)
+      // Phase 4: Load bots, pets, and wired data in parallel (all depend on layout +
+      // items)
       CompletableFuture<Void> botsFuture = CompletableFuture.runAsync(() -> {
         try (Connection botsConnection = Emulator.getDatabase().getDataSource().getConnection()) {
           this.loadBots(botsConnection);
@@ -598,7 +603,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       item.setExtradata("1");
       this.updateItem(item);
     }
-    
+
     // Set loaded flag with lock
     synchronized (this.loadLock) {
       this.loaded = true;
@@ -670,7 +675,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
             }
             b.getRoomUnit().setRoomUnitType(RoomUnitType.BOT);
             b.getRoomUnit().setDanceType(DanceType.values()[set.getInt("dance")]);
-            //b.getRoomUnit().setCanWalk(set.getBoolean("freeroam"));
+            // b.getRoomUnit().setCanWalk(set.getBoolean("freeroam"));
             b.getRoomUnit().setInRoom(true);
             this.giveEffect(b.getRoomUnit(), set.getInt("effect"), Integer.MAX_VALUE);
             this.addBot(b);
@@ -892,7 +897,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       if (this.loaded) {
         // Set loaded to false FIRST to prevent re-entry and ensure cycle stops
         this.loaded = false;
-        
+
         try {
           if (this.traxManager != null && !this.traxManager.disposed()) {
             this.traxManager.dispose();
@@ -927,10 +932,10 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
           if (this.roomSpecialTypes != null) {
             this.roomSpecialTypes.dispose();
           }
-          
+
           // Unregister all wired tickables for this room from the tick service
           com.eu.habbo.habbohotel.wired.core.WiredManager.unregisterRoomTickables(this);
-          
+
           // Clear wired engine caches for this room
           if (com.eu.habbo.habbohotel.wired.core.WiredManager.getStackIndex() != null) {
             com.eu.habbo.habbohotel.wired.core.WiredManager.getStackIndex().invalidateAll(this);
@@ -953,11 +958,11 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
           // Save bots BEFORE clearing - must happen before unitManager.clear()
           TIntObjectIterator<Bot> botIterator = this.getCurrentBots().iterator();
 
-          for (int i = this.getCurrentBots().size(); i-- > 0; ) {
+          for (int i = this.getCurrentBots().size(); i-- > 0;) {
             try {
               botIterator.advance();
               botIterator.value().needsUpdate(true);
-              botIterator.value().run();  // Run synchronously to ensure DB is updated before room reload
+              botIterator.value().run(); // Run synchronously to ensure DB is updated before room reload
             } catch (NoSuchElementException e) {
               LOGGER.error("Caught exception", e);
               break;
@@ -966,11 +971,11 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
 
           // Save ALL remaining pets (including owner's pets) BEFORE clearing
           TIntObjectIterator<Pet> petIterator = this.getCurrentPets().iterator();
-          for (int i = this.getCurrentPets().size(); i-- > 0; ) {
+          for (int i = this.getCurrentPets().size(); i-- > 0;) {
             try {
               petIterator.advance();
               petIterator.value().needsUpdate = true;
-              petIterator.value().run();  // Run synchronously to ensure DB is updated before room reload
+              petIterator.value().run(); // Run synchronously to ensure DB is updated before room reload
             } catch (NoSuchElementException e) {
               LOGGER.error("Caught exception", e);
               break;
@@ -1095,8 +1100,9 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   public void save() {
     if (this.needsUpdate) {
       try (Connection connection = Emulator.getDatabase().getDataSource()
-          .getConnection(); PreparedStatement statement = connection.prepareStatement(
-          "UPDATE rooms SET name = ?, description = ?, password = ?, state = ?, users_max = ?, category = ?, score = ?, paper_floor = ?, paper_wall = ?, paper_landscape = ?, thickness_wall = ?, wall_height = ?, thickness_floor = ?, moodlight_data = ?, tags = ?, allow_other_pets = ?, allow_other_pets_eat = ?, allow_walkthrough = ?, allow_hidewall = ?, chat_mode = ?, chat_weight = ?, chat_speed = ?, chat_hearing_distance = ?, chat_protection =?, who_can_mute = ?, who_can_kick = ?, who_can_ban = ?, poll_id = ?, guild_id = ?, roller_speed = ?, override_model = ?, is_staff_picked = ?, promoted = ?, trade_mode = ?, move_diagonally = ?, owner_id = ?, owner_name = ?, jukebox_active = ?, hidewired = ? WHERE id = ?")) {
+          .getConnection();
+          PreparedStatement statement = connection.prepareStatement(
+              "UPDATE rooms SET name = ?, description = ?, password = ?, state = ?, users_max = ?, category = ?, score = ?, paper_floor = ?, paper_wall = ?, paper_landscape = ?, thickness_wall = ?, wall_height = ?, thickness_floor = ?, moodlight_data = ?, tags = ?, allow_other_pets = ?, allow_other_pets_eat = ?, allow_walkthrough = ?, allow_hidewall = ?, chat_mode = ?, chat_weight = ?, chat_speed = ?, chat_hearing_distance = ?, chat_protection =?, who_can_mute = ?, who_can_kick = ?, who_can_ban = ?, poll_id = ?, guild_id = ?, roller_speed = ?, override_model = ?, is_staff_picked = ?, promoted = ?, trade_mode = ?, move_diagonally = ?, owner_id = ?, owner_name = ?, jukebox_active = ?, hidewired = ? WHERE id = ?")) {
         statement.setString(1, this.name);
         statement.setString(2, this.description);
         statement.setString(3, this.password);
@@ -1160,8 +1166,9 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
    */
   public void updateDatabaseUserCount() {
     try (Connection connection = Emulator.getDatabase().getDataSource()
-        .getConnection(); PreparedStatement statement = connection.prepareStatement(
-        "UPDATE rooms SET users = ? WHERE id = ? LIMIT 1")) {
+        .getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE rooms SET users = ? WHERE id = ? LIMIT 1")) {
       statement.setInt(1, this.getUserCount());
       statement.setInt(2, this.id);
       statement.executeUpdate();
@@ -1573,8 +1580,8 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   }
 
   public String[] filterAnything() {
-    return new String[]{this.getOwnerName(), this.getGuildName(), this.getDescription(),
-        this.getPromotionDesc()};
+    return new String[] { this.getOwnerName(), this.getGuildName(), this.getDescription(),
+        this.getPromotionDesc() };
   }
 
   public long getCycleTimestamp() {
@@ -1733,13 +1740,16 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   }
 
   public HabboItem getHabboItem(int id) {
+    return this.itemManager.getHabboItemByVisibleId(id);
+  }
+
+  public HabboItem getHabboItemByDatabaseId(int id) {
     return this.itemManager.getHabboItem(id);
   }
 
   void removeHabboItem(int id) {
     this.itemManager.removeHabboItem(id);
   }
-
 
   public void removeHabboItem(HabboItem item) {
     this.itemManager.removeHabboItem(item);
@@ -2094,7 +2104,8 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
   }
 
   /**
-   * @deprecated Deprecated since 2.5.0. Use {@link #getGuildRightLevel(Habbo)} instead.
+   * @deprecated Deprecated since 2.5.0. Use {@link #getGuildRightLevel(Habbo)}
+   *             instead.
    */
   @Deprecated
   public int guildRightLevel(Habbo habbo) {
@@ -2256,15 +2267,29 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
     this.itemManager.ejectUserFurni(userId);
   }
 
+  public void pickUpBuildersClubItems(int userId, Habbo picker) {
+    this.itemManager.pickUpBuildersClubItems(userId, picker);
+  }
+
+  public void pickUpBuildersClubItem(HabboItem item, Habbo picker) {
+    this.itemManager.pickUpBuildersClubItem(item, picker);
+  }
+
+  public boolean hasBuildersClubItems() {
+    return this.itemManager.hasBuildersClubItems();
+  }
+
+  public boolean hasUserBuildersClubItems(int userId) {
+    return this.itemManager.hasUserBuildersClubItems(userId);
+  }
+
   public void ejectUserItem(HabboItem item) {
     this.itemManager.ejectUserItem(item);
   }
 
-
   public void ejectAll() {
     this.itemManager.ejectAll();
   }
-
 
   public void ejectAll(Habbo habbo) {
     this.itemManager.ejectAll(habbo);
@@ -2296,7 +2321,7 @@ public class Room implements Comparable<Room>, ISerialize, Runnable {
       TIntObjectMap<HabboItem> items = this.itemManager.getRoomItems();
       TIntObjectIterator<HabboItem> iterator = items.iterator();
 
-      for (int i = items.size(); i-- > 0; ) {
+      for (int i = items.size(); i-- > 0;) {
         try {
           iterator.advance();
         } catch (Exception e) {

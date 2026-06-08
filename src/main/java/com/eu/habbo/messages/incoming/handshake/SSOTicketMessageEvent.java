@@ -11,6 +11,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.habbohotel.users.HabboManager;
 import com.eu.habbo.habbohotel.users.clothingvalidation.ClothingValidationManager;
 import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionHabboClub;
+import com.eu.habbo.habbohotel.users.subscriptions.SubscriptionBuildersClub;
 import com.eu.habbo.messages.NoAuthMessage;
 import com.eu.habbo.messages.ServerMessage;
 import com.eu.habbo.messages.incoming.MessageHandler;
@@ -45,8 +46,6 @@ import java.util.Date;
 public class SSOTicketMessageEvent extends MessageHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(SSOTicketMessageEvent.class);
 
-
-
     @Override
     public void handle() throws Exception {
         if (!this.client.getChannel().isOpen()) {
@@ -57,7 +56,8 @@ public class SSOTicketMessageEvent extends MessageHandler {
         if (!Emulator.isReady)
             return;
 
-        if (Emulator.getConfig().getBoolean("encryption.forced", false) && Emulator.getCrypto().isEnabled() && !this.client.isHandshakeFinished()) {
+        if (Emulator.getConfig().getBoolean("encryption.forced", false) && Emulator.getCrypto().isEnabled()
+                && !this.client.isHandshakeFinished()) {
             Emulator.getGameServer().getGameClientManager().disposeClient(this.client);
             LOGGER.warn("Encryption is forced and TLS Handshake isn't finished! Closed connection...");
             return;
@@ -83,7 +83,7 @@ public class SSOTicketMessageEvent extends MessageHandler {
                 try {
                     habbo.setClient(this.client);
                     this.client.setHabbo(habbo);
-                    if(!this.client.getHabbo().connect()) {
+                    if (!this.client.getHabbo().connect()) {
                         Emulator.getGameServer().getGameClientManager().disposeClient(this.client);
                         return;
                     }
@@ -94,7 +94,8 @@ public class SSOTicketMessageEvent extends MessageHandler {
                     }
 
                     if (this.client.getHabbo().getHabboInfo().getRank() == null) {
-                        throw new NullPointerException(habbo.getHabboInfo().getUsername() + " has a NON EXISTING RANK!");
+                        throw new NullPointerException(
+                                habbo.getHabboInfo().getUsername() + " has a NON EXISTING RANK!");
                     }
 
                     Emulator.getThreading().run(habbo);
@@ -105,9 +106,9 @@ public class SSOTicketMessageEvent extends MessageHandler {
                     return;
                 }
 
-                if(ClothingValidationManager.VALIDATE_ON_LOGIN) {
+                if (ClothingValidationManager.VALIDATE_ON_LOGIN) {
                     String validated = ClothingValidationManager.validateLook(this.client.getHabbo());
-                    if(!validated.equals(this.client.getHabbo().getHabboInfo().getLook())) {
+                    if (!validated.equals(this.client.getHabbo().getHabboInfo().getLook())) {
                         this.client.getHabbo().getHabboInfo().setLook(validated);
                     }
                 }
@@ -118,30 +119,41 @@ public class SSOTicketMessageEvent extends MessageHandler {
 
                 int roomIdToEnter = 0;
 
-                if (!this.client.getHabbo().getHabboStats().nux || Emulator.getConfig().getBoolean("retro.style.homeroom") && this.client.getHabbo().getHabboInfo().getHomeRoom() != 0)
+                if (!this.client.getHabbo().getHabboStats().nux
+                        || Emulator.getConfig().getBoolean("retro.style.homeroom")
+                                && this.client.getHabbo().getHabboInfo().getHomeRoom() != 0)
                     roomIdToEnter = this.client.getHabbo().getHabboInfo().getHomeRoom();
-                else if (!this.client.getHabbo().getHabboStats().nux || Emulator.getConfig().getBoolean("retro.style.homeroom") && RoomManager.HOME_ROOM_ID > 0)
+                else if (!this.client.getHabbo().getHabboStats().nux
+                        || Emulator.getConfig().getBoolean("retro.style.homeroom") && RoomManager.HOME_ROOM_ID > 0)
                     roomIdToEnter = RoomManager.HOME_ROOM_ID;
 
-                messages.add(new NavigatorSettingsMessageComposer(this.client.getHabbo().getHabboInfo().getHomeRoom(), roomIdToEnter).compose());
-                messages.add(new AvatarEffectsMessageComposer(habbo, this.client.getHabbo().getInventory().getEffectsComponent().effects.values()).compose());
+                messages.add(new NavigatorSettingsMessageComposer(this.client.getHabbo().getHabboInfo().getHomeRoom(),
+                        roomIdToEnter).compose());
+                messages.add(new AvatarEffectsMessageComposer(habbo,
+                        this.client.getHabbo().getInventory().getEffectsComponent().effects.values()).compose());
                 messages.add(new FigureSetIdsMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new NoobnessLevelMessageComposer(habbo).compose());
                 messages.add(new UserRightsMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new AvailabilityStatusMessageComposer(true, false, true).compose());
                 messages.add(new PingMessageComposer().compose());
-                messages.add(new InfoFeedEnableMessageComposer(Emulator.getConfig().getBoolean("bubblealerts.enabled", true)).compose());
+                messages.add(
+                        new InfoFeedEnableMessageComposer(Emulator.getConfig().getBoolean("bubblealerts.enabled", true))
+                                .compose());
                 messages.add(new AchievementsScoreMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new IsFirstLoginOfDayComposer(true).compose());
                 messages.add(new MysteryBoxKeysMessageComposer().compose());
-                messages.add(new BuildersClubSubscriptionStatusMessageComposer().compose());
+                messages.add(new BuildersClubSubscriptionStatusMessageComposer(this.client.getHabbo()).compose());
+                messages.add(new com.eu.habbo.messages.outgoing.catalog.BuildersClubFurniCountMessageComposer(
+                        this.client.getHabbo()).compose());
                 messages.add(new CfhTopicsInitMessageComposer().compose());
                 messages.add(new FavouritesMessageComposer(this.client.getHabbo()).compose());
                 messages.add(new GameListMessageComposer().compose());
                 messages.add(new Game2AccountGameStatusMessageComposer(3, 100).compose());
                 messages.add(new Game2AccountGameStatusMessageComposer(0, 100).compose());
 
-                messages.add(new ScrSendUserInfoMessageComposer(this.client.getHabbo(), SubscriptionHabboClub.HABBO_CLUB, ScrSendUserInfoMessageComposer.RESPONSE_TYPE_LOGIN).compose());
+                messages.add(
+                        new ScrSendUserInfoMessageComposer(this.client.getHabbo(), SubscriptionHabboClub.HABBO_CLUB,
+                                ScrSendUserInfoMessageComposer.RESPONSE_TYPE_LOGIN).compose());
 
                 if (this.client.getHabbo().hasPermission(Permission.ACC_SUPPORTTOOL)) {
                     messages.add(new ModeratorInitMessageComposer(this.client.getHabbo()).compose());
@@ -149,29 +161,34 @@ public class SSOTicketMessageEvent extends MessageHandler {
 
                 this.client.sendResponses(messages);
 
-                //Hardcoded
-                //this.client.sendResponse(new ForumsTestComposer());
+                // Hardcoded
+                // this.client.sendResponse(new ForumsTestComposer());
                 this.client.sendResponse(new BadgePointLimitsMessageComposer());
 
                 ModToolSanctions modToolSanctions = Emulator.getGameEnvironment().getModToolSanctions();
 
                 if (Emulator.getConfig().getBoolean("hotel.sanctions.enabled")) {
-                    THashMap<Integer, ArrayList<ModToolSanctionItem>> modToolSanctionItemsHashMap = Emulator.getGameEnvironment().getModToolSanctions().getSanctions(habbo.getHabboInfo().getId());
-                    ArrayList<ModToolSanctionItem> modToolSanctionItems = modToolSanctionItemsHashMap.get(habbo.getHabboInfo().getId());
+                    THashMap<Integer, ArrayList<ModToolSanctionItem>> modToolSanctionItemsHashMap = Emulator
+                            .getGameEnvironment().getModToolSanctions().getSanctions(habbo.getHabboInfo().getId());
+                    ArrayList<ModToolSanctionItem> modToolSanctionItems = modToolSanctionItemsHashMap
+                            .get(habbo.getHabboInfo().getId());
 
                     if (modToolSanctionItems != null && modToolSanctionItems.size() > 0) {
                         ModToolSanctionItem item = modToolSanctionItems.get(modToolSanctionItems.size() - 1);
 
-                        if (item.sanctionLevel > 0 && item.probationTimestamp != 0 && item.probationTimestamp > Emulator.getIntUnixTimestamp()) {
+                        if (item.sanctionLevel > 0 && item.probationTimestamp != 0
+                                && item.probationTimestamp > Emulator.getIntUnixTimestamp()) {
                             this.client.sendResponse(new SanctionStatusMessageComposer(this.client.getHabbo()));
-                        } else if (item.sanctionLevel > 0 && item.probationTimestamp != 0 && item.probationTimestamp <= Emulator.getIntUnixTimestamp()) {
+                        } else if (item.sanctionLevel > 0 && item.probationTimestamp != 0
+                                && item.probationTimestamp <= Emulator.getIntUnixTimestamp()) {
                             modToolSanctions.updateSanction(item.id, 0);
                         }
 
                         if (item.tradeLockedUntil > 0 && item.tradeLockedUntil <= Emulator.getIntUnixTimestamp()) {
                             modToolSanctions.updateTradeLockedUntil(item.id, 0);
                             habbo.getHabboStats().setAllowTrade(true);
-                        } else if (item.tradeLockedUntil > 0 && item.tradeLockedUntil > Emulator.getIntUnixTimestamp()) {
+                        } else if (item.tradeLockedUntil > 0
+                                && item.tradeLockedUntil > Emulator.getIntUnixTimestamp()) {
                             habbo.getHabboStats().setAllowTrade(false);
                         }
 
@@ -186,10 +203,11 @@ public class SSOTicketMessageEvent extends MessageHandler {
                     }
                 }
 
-                UserLoginEvent userLoginEvent = new UserLoginEvent(habbo, this.client.getHabbo().getHabboInfo().getIpLogin());
+                UserLoginEvent userLoginEvent = new UserLoginEvent(habbo,
+                        this.client.getHabbo().getHabboInfo().getIpLogin());
                 Emulator.getPluginManager().fireEvent(userLoginEvent);
 
-                if(userLoginEvent.isCancelled()) {
+                if (userLoginEvent.isCancelled()) {
                     Emulator.getGameServer().getGameClientManager().disposeClient(this.client);
                     return;
                 }
@@ -198,20 +216,29 @@ public class SSOTicketMessageEvent extends MessageHandler {
                     final Habbo finalHabbo = habbo;
                     Emulator.getThreading().run(() -> {
                         if (Emulator.getConfig().getBoolean("hotel.welcome.alert.oldstyle")) {
-                            SSOTicketMessageEvent.this.client.sendResponse(new MOTDNotificationMessageComposer(HabboManager.WELCOME_MESSAGE.replace("%username%", finalHabbo.getHabboInfo().getUsername()).replace("%user%", finalHabbo.getHabboInfo().getUsername()).split("<br/>")));
+                            SSOTicketMessageEvent.this.client
+                                    .sendResponse(new MOTDNotificationMessageComposer(HabboManager.WELCOME_MESSAGE
+                                            .replace("%username%", finalHabbo.getHabboInfo().getUsername())
+                                            .replace("%user%", finalHabbo.getHabboInfo().getUsername())
+                                            .split("<br/>")));
                         } else {
-                            SSOTicketMessageEvent.this.client.sendResponse(new HabboBroadcastMessageComposer(HabboManager.WELCOME_MESSAGE.replace("%username%", finalHabbo.getHabboInfo().getUsername()).replace("%user%", finalHabbo.getHabboInfo().getUsername())));
+                            SSOTicketMessageEvent.this.client
+                                    .sendResponse(new HabboBroadcastMessageComposer(HabboManager.WELCOME_MESSAGE
+                                            .replace("%username%", finalHabbo.getHabboInfo().getUsername())
+                                            .replace("%user%", finalHabbo.getHabboInfo().getUsername())));
                         }
                     }, Emulator.getConfig().getInt("hotel.welcome.alert.delay", 5000));
                 }
 
-                if(SubscriptionHabboClub.HC_PAYDAY_ENABLED) {
+                if (SubscriptionHabboClub.HC_PAYDAY_ENABLED) {
                     SubscriptionHabboClub.processUnclaimed(habbo);
                 }
 
                 SubscriptionHabboClub.processClubBadge(habbo);
 
                 Messenger.checkFriendSizeProgress(habbo);
+
+                SubscriptionBuildersClub.checkExpiryWarning(habbo);
 
                 if (!habbo.getHabboStats().hasGottenDefaultSavedSearches) {
                     habbo.getHabboStats().hasGottenDefaultSavedSearches = true;
@@ -221,7 +248,8 @@ public class SSOTicketMessageEvent extends MessageHandler {
                     habbo.getHabboInfo().addSavedSearch(new NavigatorSavedSearch("my", ""));
                     habbo.getHabboInfo().addSavedSearch(new NavigatorSavedSearch("favorites", ""));
 
-                    this.client.sendResponse(new NavigatorSavedSearchesMessageComposer(this.client.getHabbo().getHabboInfo().getSavedSearches()));
+                    this.client.sendResponse(new NavigatorSavedSearchesMessageComposer(
+                            this.client.getHabbo().getHabboInfo().getSavedSearches()));
                 }
             } else {
                 Emulator.getGameServer().getGameClientManager().disposeClient(this.client);

@@ -39,7 +39,7 @@ public class WiredEffectBotClothes extends InteractionWiredEffect {
         message.appendInt(5);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString(this.botName + ((char) 9) + "" + this.botLook);
         message.appendInt(0);
         message.appendInt(0);

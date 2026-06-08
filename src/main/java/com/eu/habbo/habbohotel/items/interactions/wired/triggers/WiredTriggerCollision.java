@@ -64,7 +64,7 @@ public class WiredTriggerCollision extends InteractionWiredTrigger {
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(0);
         message.appendInt(0);

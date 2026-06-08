@@ -30,7 +30,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
     private final Set<HabboItem> items = new LinkedHashSet<>(WiredManager.MAXIMUM_FURNI_SELECTION / 2);
     private int direction;
     private int rotation;
-    // Use thread-safe set for cooldowns since execute() can be called from async threads
+    // Use thread-safe set for cooldowns since execute() can be called from async
+    // threads
     private final Set<HabboItem> itemCooldowns = ConcurrentHashMap.newKeySet();
     // Pre-selected directions from simulation (itemId -> direction)
     private final Map<Integer, RoomUserRotation> preSelectedDirections = new ConcurrentHashMap<>();
@@ -39,7 +40,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         super(set, baseItem);
     }
 
-    public WiredEffectMoveRotateFurni(int id, int userId, Item item, String extradata, int limitedStack, int limitedSells) {
+    public WiredEffectMoveRotateFurni(int id, int userId, Item item, String extradata, int limitedStack,
+            int limitedSells) {
         super(id, userId, item, extradata, limitedStack, limitedSells);
     }
 
@@ -47,10 +49,11 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
     public void execute(WiredContext ctx) {
         Room room = ctx.room();
         // remove items that are no longer in the room
-        this.items.removeIf(item -> Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null);
+        this.items.removeIf(item -> Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId())
+                .getHabboItemByDatabaseId(item.getId()) == null);
 
         for (HabboItem item : this.items) {
-            if(this.itemCooldowns.contains(item))
+            if (this.itemCooldowns.contains(item))
                 continue;
 
             int newRotation = this.rotation > 0 ? this.getNewRotation(item) : item.getRotation();
@@ -58,26 +61,46 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
             RoomTile oldLocation = room.getLayout().getTile(item.getX(), item.getY());
             double oldZ = item.getZ();
 
-            if(this.direction > 0) {
+            if (this.direction > 0) {
                 // Use pre-selected direction if available, otherwise pick random
                 RoomUserRotation moveDirection = this.preSelectedDirections.remove(item.getId());
                 if (moveDirection == null) {
                     moveDirection = this.getMovementDirection();
                 }
                 newLocation = room.getLayout().getTile(
-                    (short) (item.getX() + ((moveDirection == RoomUserRotation.WEST || moveDirection == RoomUserRotation.NORTH_WEST || moveDirection == RoomUserRotation.SOUTH_WEST) ? -1 : (((moveDirection == RoomUserRotation.EAST || moveDirection == RoomUserRotation.SOUTH_EAST || moveDirection == RoomUserRotation.NORTH_EAST) ? 1 : 0)))),
-                    (short) (item.getY() + ((moveDirection == RoomUserRotation.NORTH || moveDirection == RoomUserRotation.NORTH_EAST || moveDirection == RoomUserRotation.NORTH_WEST) ? 1 : ((moveDirection == RoomUserRotation.SOUTH || moveDirection == RoomUserRotation.SOUTH_EAST || moveDirection == RoomUserRotation.SOUTH_WEST) ? -1 : 0)))
-                );
+                        (short) (item.getX() + ((moveDirection == RoomUserRotation.WEST
+                                || moveDirection == RoomUserRotation.NORTH_WEST
+                                || moveDirection == RoomUserRotation.SOUTH_WEST)
+                                        ? -1
+                                        : (((moveDirection == RoomUserRotation.EAST
+                                                || moveDirection == RoomUserRotation.SOUTH_EAST
+                                                || moveDirection == RoomUserRotation.NORTH_EAST) ? 1 : 0)))),
+                        (short) (item.getY() + ((moveDirection == RoomUserRotation.NORTH
+                                || moveDirection == RoomUserRotation.NORTH_EAST
+                                || moveDirection == RoomUserRotation.NORTH_WEST)
+                                        ? 1
+                                        : ((moveDirection == RoomUserRotation.SOUTH
+                                                || moveDirection == RoomUserRotation.SOUTH_EAST
+                                                || moveDirection == RoomUserRotation.SOUTH_WEST) ? -1 : 0))));
             }
 
             boolean slideAnimation = item.getRotation() == newRotation;
 
             FurnitureMovementError furniMoveTest = room.furnitureFitsAt(newLocation, item, newRotation, true);
-            if(newLocation != null && newLocation.state != RoomTileState.INVALID && (newLocation != oldLocation || newRotation != item.getRotation()) && (furniMoveTest == FurnitureMovementError.NONE || ((furniMoveTest == FurnitureMovementError.TILE_HAS_BOTS || furniMoveTest == FurnitureMovementError.TILE_HAS_HABBOS || furniMoveTest == FurnitureMovementError.TILE_HAS_PETS) && newLocation == oldLocation))) {
-                if(room.furnitureFitsAt(newLocation, item, newRotation, false) == FurnitureMovementError.NONE && room.moveFurniTo(item, newLocation, newRotation, null, !slideAnimation) == FurnitureMovementError.NONE) {
+            if (newLocation != null && newLocation.state != RoomTileState.INVALID
+                    && (newLocation != oldLocation || newRotation != item.getRotation())
+                    && (furniMoveTest == FurnitureMovementError.NONE
+                            || ((furniMoveTest == FurnitureMovementError.TILE_HAS_BOTS
+                                    || furniMoveTest == FurnitureMovementError.TILE_HAS_HABBOS
+                                    || furniMoveTest == FurnitureMovementError.TILE_HAS_PETS)
+                                    && newLocation == oldLocation))) {
+                if (room.furnitureFitsAt(newLocation, item, newRotation, false) == FurnitureMovementError.NONE
+                        && room.moveFurniTo(item, newLocation, newRotation, null,
+                                !slideAnimation) == FurnitureMovementError.NONE) {
                     this.itemCooldowns.add(item);
-                    if(slideAnimation) {
-                        room.sendComposer(new FloorItemOnRollerComposer(item, null, oldLocation, oldZ, newLocation, item.getZ(), 0, room).compose());
+                    if (slideAnimation) {
+                        room.sendComposer(new FloorItemOnRollerComposer(item, null, oldLocation, oldZ, newLocation,
+                                item.getZ(), 0, room).compose());
                     }
                 }
             }
@@ -88,42 +111,53 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
     public boolean simulate(WiredContext ctx, WiredSimulation simulation) {
         // Clear any previous pre-selected directions
         this.preSelectedDirections.clear();
-        
+
         for (HabboItem item : this.items) {
-            if (item == null) continue;
-            
+            if (item == null)
+                continue;
+
             WiredSimulation.SimulatedPosition currentPos = simulation.getItemPosition(item);
             short newX = currentPos.x;
             short newY = currentPos.y;
-            
+
             if (this.direction > 0) {
                 // Pick the actual random direction now (same logic as getMovementDirection)
                 RoomUserRotation selectedDirection = this.getMovementDirection();
-                
+
                 // Calculate target position for the selected direction
-                short testX = (short) (currentPos.x + ((selectedDirection == RoomUserRotation.WEST || selectedDirection == RoomUserRotation.NORTH_WEST || selectedDirection == RoomUserRotation.SOUTH_WEST) ? -1 : 
-                    (((selectedDirection == RoomUserRotation.EAST || selectedDirection == RoomUserRotation.SOUTH_EAST || selectedDirection == RoomUserRotation.NORTH_EAST) ? 1 : 0))));
-                short testY = (short) (currentPos.y + ((selectedDirection == RoomUserRotation.NORTH || selectedDirection == RoomUserRotation.NORTH_EAST || selectedDirection == RoomUserRotation.NORTH_WEST) ? 1 : 
-                    ((selectedDirection == RoomUserRotation.SOUTH || selectedDirection == RoomUserRotation.SOUTH_EAST || selectedDirection == RoomUserRotation.SOUTH_WEST) ? -1 : 0)));
-                
+                short testX = (short) (currentPos.x + ((selectedDirection == RoomUserRotation.WEST
+                        || selectedDirection == RoomUserRotation.NORTH_WEST
+                        || selectedDirection == RoomUserRotation.SOUTH_WEST)
+                                ? -1
+                                : (((selectedDirection == RoomUserRotation.EAST
+                                        || selectedDirection == RoomUserRotation.SOUTH_EAST
+                                        || selectedDirection == RoomUserRotation.NORTH_EAST) ? 1 : 0))));
+                short testY = (short) (currentPos.y + ((selectedDirection == RoomUserRotation.NORTH
+                        || selectedDirection == RoomUserRotation.NORTH_EAST
+                        || selectedDirection == RoomUserRotation.NORTH_WEST)
+                                ? 1
+                                : ((selectedDirection == RoomUserRotation.SOUTH
+                                        || selectedDirection == RoomUserRotation.SOUTH_EAST
+                                        || selectedDirection == RoomUserRotation.SOUTH_WEST) ? -1 : 0)));
+
                 // Validate this specific direction
                 if (!simulation.isTileValidForItem(testX, testY, item)) {
                     return false; // This specific move would fail
                 }
-                
+
                 // Store the pre-selected direction for execution
                 this.preSelectedDirections.put(item.getId(), selectedDirection);
                 newX = testX;
                 newY = testY;
             }
-            
+
             if (newX != currentPos.x || newY != currentPos.y) {
                 if (!simulation.moveItem(item, newX, newY, currentPos.z, currentPos.rotation)) {
                     return false;
                 }
             }
         }
-        
+
         return true;
     }
 
@@ -134,7 +168,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         Room room = Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId());
 
         for (HabboItem item : this.items) {
-            if (item.getRoomId() != this.getRoomId() || (room != null && room.getHabboItem(item.getId()) == null))
+            if (item.getRoomId() != this.getRoomId()
+                    || (room != null && room.getHabboItemByDatabaseId(item.getId()) == null))
                 itemsToRemove.add(item);
         }
 
@@ -146,8 +181,7 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
                 this.direction,
                 this.rotation,
                 this.getDelay(),
-                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())
-        ));
+                this.items.stream().map(HabboItem::getId).collect(Collectors.toList())));
     }
 
     @Override
@@ -160,8 +194,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
             this.setDelay(data.delay);
             this.direction = data.direction;
             this.rotation = data.rotation;
-            for (Integer id: data.itemIds) {
-                HabboItem item = room.getHabboItem(id);
+            for (Integer id : data.itemIds) {
+                HabboItem item = room.getHabboItemByDatabaseId(id);
                 if (item != null) {
                     this.items.add(item);
                 }
@@ -179,7 +213,7 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
                 }
 
                 for (String s : data[3].split("\r")) {
-                    HabboItem item = room.getHabboItem(Integer.parseInt(s));
+                    HabboItem item = room.getHabboItemByDatabaseId(Integer.parseInt(s));
 
                     if (item != null)
                         this.items.add(item);
@@ -206,7 +240,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         List<HabboItem> itemsToRemove = new ArrayList<>();
 
         for (HabboItem item : this.items) {
-            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager().getRoom(this.getRoomId()).getHabboItem(item.getId()) == null)
+            if (item.getRoomId() != this.getRoomId() || Emulator.getGameEnvironment().getRoomManager()
+                    .getRoom(this.getRoomId()).getHabboItemByDatabaseId(item.getId()) == null)
                 itemsToRemove.add(item);
         }
 
@@ -218,9 +253,9 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         message.appendInt(WiredManager.MAXIMUM_FURNI_SELECTION);
         message.appendInt(this.items.size());
         for (HabboItem item : this.items)
-            message.appendInt(item.getId());
+            message.appendInt(item.getRoomVisibleId());
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString("");
         message.appendInt(2);
         message.appendInt(this.direction);
@@ -238,13 +273,15 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         if (room == null)
             return false;
 
-        if(settings.getIntParams().length < 2) throw new WiredSaveException("invalid data");
+        if (settings.getIntParams().length < 2)
+            throw new WiredSaveException("invalid data");
 
         this.direction = settings.getIntParams()[0];
         this.rotation = settings.getIntParams()[1];
 
         int count = settings.getFurniIds().length;
-        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count", 5)) return false;
+        if (count > Emulator.getConfig().getInt("hotel.wired.furni.selection.count", 5))
+            return false;
 
         this.items.clear();
         for (int i = 0; i < count; i++) {
@@ -259,7 +296,6 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
         return true;
     }
 
-
     /**
      * Returns a new rotation for an item based on the wired options
      *
@@ -267,27 +303,24 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
      * @return new rotation
      */
     private int getNewRotation(HabboItem item) {
-        if(item.getMaximumRotations() == 2) {
+        if (item.getMaximumRotations() == 2) {
             return item.getRotation() == 0 ? 4 : 0;
-        }
-        else if(item.getMaximumRotations() == 1) {
+        } else if (item.getMaximumRotations() == 1) {
             return item.getRotation();
-        }
-        else if(item.getMaximumRotations() > 4) {
+        } else if (item.getMaximumRotations() > 4) {
             if (this.rotation == 1) {
                 return item.getRotation() == item.getMaximumRotations() - 1 ? 0 : item.getRotation() + 1;
             } else if (this.rotation == 2) {
                 return item.getRotation() > 0 ? item.getRotation() - 1 : item.getMaximumRotations() - 1;
-            } else if (this.rotation == 3) { //Random rotation
+            } else if (this.rotation == 3) { // Random rotation
                 THashSet<Integer> possibleRotations = new THashSet<>();
-                for (int i = 0; i < item.getMaximumRotations(); i++)
-                {
+                for (int i = 0; i < item.getMaximumRotations(); i++) {
                     possibleRotations.add(i);
                 }
 
                 possibleRotations.remove(item.getRotation());
 
-                if(possibleRotations.size() > 0) {
+                if (possibleRotations.size() > 0) {
                     int index = Emulator.getRandom().nextInt(possibleRotations.size());
                     Iterator<Integer> iter = possibleRotations.iterator();
                     for (int i = 0; i < index; i++) {
@@ -296,26 +329,24 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
                     return iter.next();
                 }
             }
-        }
-        else {
+        } else {
             if (this.rotation == 1) {
                 return (item.getRotation() + 2) % 8;
             } else if (this.rotation == 2) {
                 int rot = (item.getRotation() - 2) % 8;
-                if(rot < 0) {
+                if (rot < 0) {
                     rot += 8;
                 }
                 return rot;
-            } else if (this.rotation == 3) { //Random rotation
+            } else if (this.rotation == 3) { // Random rotation
                 THashSet<Integer> possibleRotations = new THashSet<>();
-                for (int i = 0; i < item.getMaximumRotations(); i++)
-                {
+                for (int i = 0; i < item.getMaximumRotations(); i++) {
                     possibleRotations.add(i * 2);
                 }
 
                 possibleRotations.remove(item.getRotation());
 
-                if(possibleRotations.size() > 0) {
+                if (possibleRotations.size() > 0) {
                     int index = Emulator.getRandom().nextInt(possibleRotations.size());
                     Iterator<Integer> iter = possibleRotations.iterator();
                     for (int i = 0; i < index; i++) {
@@ -337,7 +368,8 @@ public class WiredEffectMoveRotateFurni extends InteractionWiredEffect implement
     private RoomUserRotation getMovementDirection() {
         RoomUserRotation movemementDirection = RoomUserRotation.NORTH;
         if (this.direction == 1) {
-            movemementDirection = RoomUserRotation.values()[Emulator.getRandom().nextInt(RoomUserRotation.values().length / 2) * 2];
+            movemementDirection = RoomUserRotation
+                    .values()[Emulator.getRandom().nextInt(RoomUserRotation.values().length / 2) * 2];
         } else if (this.direction == 2) {
             if (Emulator.getRandom().nextInt(2) == 1) {
                 movemementDirection = RoomUserRotation.EAST;

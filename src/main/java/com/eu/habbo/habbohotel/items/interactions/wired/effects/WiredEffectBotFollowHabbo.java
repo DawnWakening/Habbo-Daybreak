@@ -42,7 +42,7 @@ public class WiredEffectBotFollowHabbo extends InteractionWiredEffect {
         message.appendInt(5);
         message.appendInt(0);
         message.appendInt(this.getBaseItem().getSpriteId());
-        message.appendInt(this.getId());
+        message.appendInt(this.getRoomVisibleId());
         message.appendString(this.botName);
         message.appendInt(1);
         message.appendInt(this.mode);

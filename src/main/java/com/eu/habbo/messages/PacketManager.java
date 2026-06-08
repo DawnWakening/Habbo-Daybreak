@@ -234,6 +234,8 @@ public class PacketManager {
         this.registerHandler(Incoming.GetMarketplaceConfigEvent, RequestMarketplaceConfigEvent.class);
         this.registerHandler(Incoming.GetCatalogIndexEvent, GetCatalogIndexEvent.class);
         this.registerHandler(Incoming.BuildersClubQueryFurniCountMessageEvent, BuildersClubQueryFurniCountMessageEvent.class);
+        this.registerHandler(Incoming.BuildersClubPlaceRoomItemMessageEvent, BuildersClubPlaceRoomItemMessageEvent.class);
+        this.registerHandler(Incoming.BuildersClubPlaceWallItemMessageEvent, BuildersClubPlaceWallItemMessageEvent.class);
         this.registerHandler(Incoming.GetCatalogPageEvent, GetCatalogPageEvent.class);
         this.registerHandler(Incoming.PurchaseFromCatalogAsGiftEvent, PurchaseFromCatalogAsGiftEvent.class);
         this.registerHandler(Incoming.PurchaseFromCatalogEvent, PurchaseFromCatalogEvent.class);
