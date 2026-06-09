@@ -184,11 +184,13 @@ SET @official_root_public_cat_id = (
 
 INSERT INTO `navigator_publiccats` (`id`, `name`, `image`, `image_url`, `visible`, `order_num`)
 SELECT @official_root_public_cat_id, 'Public Rooms', '1', 'navigator/navi1.png', '1', 1
+FROM DUAL
 WHERE @official_root_public_cat_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM `navigator_publiccats` WHERE `id` = @official_root_public_cat_id);
 
 INSERT INTO `navigator_publiccats` (`name`, `image`, `image_url`, `visible`, `order_num`)
 SELECT 'Public Rooms', '1', 'navigator/navi1.png', '1', 1
+FROM DUAL
 WHERE @official_root_public_cat_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM `navigator_publiccats` WHERE `name` = 'Public Rooms');
 
@@ -215,6 +217,7 @@ INSERT INTO `rooms`
     (`owner_id`, `owner_name`, `name`, `description`, `model`, `state`, `users_max`, `category`, `override_model`, `allow_walkthrough`, `roller_speed`, `trade_mode`)
 SELECT 1, (SELECT `username` FROM `users` WHERE `id` = 1 LIMIT 1),
     'Net Cafe', 'Official public Net Cafe', 'netcafe', 'open', 50, 15, 1, 1, 4, 2
+FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM `rooms` WHERE `model` = 'netcafe' AND `owner_id` = 1);
 
 INSERT INTO `room_models_custom` (`id`, `name`, `door_x`, `door_y`, `door_dir`, `heightmap`)
@@ -234,6 +237,7 @@ INSERT INTO `rooms`
     (`owner_id`, `owner_name`, `name`, `description`, `model`, `state`, `users_max`, `category`, `override_model`, `allow_walkthrough`, `roller_speed`, `trade_mode`)
 SELECT 1, (SELECT `username` FROM `users` WHERE `id` = 1 LIMIT 1),
     'Newbie Lobby', 'Newbie Lobby.', 'newbie_lobby', 'open', 50, 15, 1, 1, 4, 2
+FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM `rooms` WHERE `model` = 'newbie_lobby' AND `owner_id` = 1);
 
 INSERT INTO `room_models_custom` (`id`, `name`, `door_x`, `door_y`, `door_dir`, `heightmap`)
